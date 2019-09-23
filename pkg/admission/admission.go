@@ -102,7 +102,7 @@ func (s *Server) Run(stopCh <-chan struct{}, port int) error {
 }
 func (s *Server) ensureWorkloadCRD() error {
 	crds := []*apiextensions.CustomResourceDefinition{
-		&apiextensions.CustomResourceDefinition{
+		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("%s.%s", workloadapi.WorkloadPlural, workloadapi.GroupName),
 			},
@@ -118,7 +118,7 @@ func (s *Server) ensureWorkloadCRD() error {
 				},
 			},
 		},
-		&apiextensions.CustomResourceDefinition{
+		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("%s.%s", workloadapi.WorkloadRevisionPlural, workloadapi.GroupName),
 			},

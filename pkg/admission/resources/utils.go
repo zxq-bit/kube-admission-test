@@ -17,7 +17,7 @@ type MutateTools struct {
 }
 
 var defaultEnv = map[string]corev1.EnvVar{
-	"POD_NAMESPACE": corev1.EnvVar{
+	"POD_NAMESPACE": {
 		Name: "POD_NAMESPACE",
 		ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{
@@ -26,7 +26,7 @@ var defaultEnv = map[string]corev1.EnvVar{
 			},
 		},
 	},
-	"POD_NAME": corev1.EnvVar{
+	"POD_NAME": {
 		Name: "POD_NAME",
 		ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{
@@ -35,7 +35,7 @@ var defaultEnv = map[string]corev1.EnvVar{
 			},
 		},
 	},
-	"POD_IP": corev1.EnvVar{
+	"POD_IP": {
 		Name: "POD_IP",
 		ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{
@@ -44,7 +44,7 @@ var defaultEnv = map[string]corev1.EnvVar{
 			},
 		},
 	},
-	"NODE_NAME": corev1.EnvVar{
+	"NODE_NAME": {
 		Name: "NODE_NAME",
 		ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{

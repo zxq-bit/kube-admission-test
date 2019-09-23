@@ -3,12 +3,11 @@ package util
 import (
 	"context"
 	"fmt"
-	"path"
-	"strings"
 
 	"github.com/caicloud/go-common/interfaces"
 	"github.com/caicloud/nirvana/definition"
 	"github.com/caicloud/nirvana/log"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,23 +38,35 @@ type Config struct {
 	// ModelName describe the model of this config, like app or resource
 	ModelName string
 	// Group+Version+Resource
-	GroupVersionResource metav1.GroupVersionResource
+	GroupVersionResource schema.GroupVersionResource
 	// ProcessorsMap map processors by operation type
 	ProcessorsMap map[arv1b1.OperationType][]Processor
 }
 
-func (c *Config) ToMutatingWebHooks(svcConfig *ServiceConfig) (re []arv1b1.MutatingWebhookConfiguration) {
+func (c *Config) ToMutatingWebHook(svcConfig *ServiceConfig) (re *arv1b1.MutatingWebhookConfiguration) {
+	gvr := c.GroupVersionResource
+	re = &arv1b1.MutatingWebhookConfiguration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: makeMutatingWebHookName(gvr.Group, gvr.Version, gvr.Resource),
+		},
+		Webhooks: make([]arv1b1.Webhook, 0, len(c.ProcessorsMap)),
+	}
 	for opType, processor := range c.ProcessorsMap {
 		if processor != nil {
-			re = append(re, MakeMutatingWebHooks(svcConfig,
-				c.GroupVersionResource,
-				opType))
+			re.Webhooks = append(re.Webhooks, MakeMutatingWebHook(
+				svcConfig,
+				gvr,
+				opType,
+			))
 		}
 	}
-	return
+	if len(re.Webhooks) == 0 {
+		return nil
+	}
+	return re
 }
 
-func (c *Config) ToNirvanaDescriptors() (re []definition.Descriptor) {
+func (c *Config) ToNirvanaDescriptors(svcConfig *ServiceConfig) (re []definition.Descriptor) {
 	if len(c.ProcessorsMap) == 0 {
 		return
 	}
@@ -65,28 +76,12 @@ func (c *Config) ToNirvanaDescriptors() (re []definition.Descriptor) {
 		if len(processors) == 0 {
 			continue
 		}
-		re = append(re, definition.Descriptor{
-			Path: strings.ToLower(path.Join(
-				gvr.Group,
-				gvr.Version,
-				gvr.Resource,
-				string(opType))),
-			Definitions: []definition.Definition{
-				{
-					Method:      definition.Create,
-					Description: fmt.Sprintf("do admission for %v/%v/%v.%v", gvr.Group, gvr.Version, gvr.Resource, opType),
-					Parameters: []definition.Parameter{
-						{
-							Source:      definition.Body,
-							Name:        "body",
-							Description: "admission body",
-						},
-					},
-					Results:  definition.DataErrorResults("admission response"),
-					Function: CombineProcessors(processors),
-				},
-			},
-		})
+		re = append(re, MakeNirvanaDescriptor(
+			svcConfig,
+			gvr,
+			opType,
+			CombineProcessors(processors),
+		))
 	}
 	return
 }

@@ -1988,6 +1988,13 @@ func (in *MASGSpec) DeepCopyInto(out *MASGSpec) {
 		}
 	}
 	in.NotifySetting.DeepCopyInto(&out.NotifySetting)
+	if in.Taints != nil {
+		in, out := &in.Taints, &out.Taints
+		*out = make([]v1.Taint, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -2401,6 +2408,13 @@ func (in *MachineSpec) DeepCopyInto(out *MachineSpec) {
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
+		}
+	}
+	if in.Taints != nil {
+		in, out := &in.Taints, &out.Taints
+		*out = make([]v1.Taint, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	return

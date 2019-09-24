@@ -1,21 +1,24 @@
 package install
 
 import (
-	cfgappsv1 "github.com/zxq-bit/kube-admission-test/pkg/admission/framework/configs/apps/v1"
-	cfgcorev1 "github.com/zxq-bit/kube-admission-test/pkg/admission/framework/configs/core/v1"
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/processor"
 
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
+
+	cfgappsv1 "github.com/zxq-bit/kube-admission-test/pkg/admission/framework/configs/apps/v1"
+	cfgcorev1 "github.com/zxq-bit/kube-admission-test/pkg/admission/framework/configs/core/v1"
 )
 
 var (
-	DaemonSetConfig   cfgappsv1.DaemonSetConfig
-	DeploymentConfig  cfgappsv1.DeploymentConfig
-	ReplicaSetConfig  cfgappsv1.ReplicaSetConfig
-	StatefulSetConfig cfgappsv1.StatefulSetConfig
-	ConfigMapConfig   cfgcorev1.ConfigMapConfig
-	PodConfig         cfgcorev1.PodConfig
-	SecretConfig      cfgcorev1.SecretConfig
+	DaemonSetConfig             cfgappsv1.DaemonSetConfig
+	DeploymentConfig            cfgappsv1.DeploymentConfig
+	ReplicaSetConfig            cfgappsv1.ReplicaSetConfig
+	StatefulSetConfig           cfgappsv1.StatefulSetConfig
+	ConfigMapConfig             cfgcorev1.ConfigMapConfig
+	PodConfig                   cfgcorev1.PodConfig
+	SecretConfig                cfgcorev1.SecretConfig
+	PersistentVolumeConfig      cfgcorev1.PersistentVolumeConfig
+	PersistentVolumeClaimConfig cfgcorev1.PersistentVolumeClaimConfig
 )
 
 func init() {
@@ -46,10 +49,18 @@ func init() {
 	SecretConfig.Register(arv1b1.Create)
 	SecretConfig.Register(arv1b1.Update)
 	SecretConfig.Register(arv1b1.Delete)
+
+	PersistentVolumeConfig.Register(arv1b1.Create)
+	PersistentVolumeConfig.Register(arv1b1.Update)
+	PersistentVolumeConfig.Register(arv1b1.Delete)
+
+	PersistentVolumeClaimConfig.Register(arv1b1.Create)
+	PersistentVolumeClaimConfig.Register(arv1b1.Update)
+	PersistentVolumeClaimConfig.Register(arv1b1.Delete)
 }
 
-func GetConfigs() []util.Config {
-	raw := []*util.Config{
+func GetConfigs() []processor.Config {
+	raw := []*processor.Config{
 		DaemonSetConfig.ToConfig(),
 		DeploymentConfig.ToConfig(),
 		ReplicaSetConfig.ToConfig(),
@@ -57,8 +68,10 @@ func GetConfigs() []util.Config {
 		ConfigMapConfig.ToConfig(),
 		PodConfig.ToConfig(),
 		SecretConfig.ToConfig(),
+		PersistentVolumeConfig.ToConfig(),
+		PersistentVolumeClaimConfig.ToConfig(),
 	}
-	re := make([]util.Config, 0, len(raw))
+	re := make([]processor.Config, 0, len(raw))
 	for _, c := range raw {
 		if c != nil {
 			re = append(re, *c)

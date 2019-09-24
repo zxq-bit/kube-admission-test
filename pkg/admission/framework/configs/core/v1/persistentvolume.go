@@ -6,28 +6,28 @@ import (
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/processor"
 
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
-	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 var (
-	statefulsetGRV = appsv1.SchemeGroupVersion.WithResource("statefulset")
-	// gvk = appsv1.SchemeGroupVersion.WithKind(reflect.TypeOf(&appsv1.StatefulSet{}).Name())
+	persistentvolumeGRV = corev1.SchemeGroupVersion.WithResource("persistentvolume")
+	// gvk = corev1.SchemeGroupVersion.WithKind(reflect.TypeOf(&corev1.PersistentVolume{}).Name())
 )
 
-type StatefulSetProcessor struct {
+type PersistentVolumeProcessor struct {
 	// Metadata, set name, type and ignore settings
 	processor.Metadata
 	// Review do review, return error if should stop
-	Review func(in *appsv1.StatefulSet) (err error)
+	Review func(in *corev1.PersistentVolume) (err error)
 }
 
-type StatefulSetConfig struct {
+type PersistentVolumeConfig struct {
 	// ProcessorsMap map pod processors by operation type
-	ProcessorsMap map[arv1b1.OperationType][]StatefulSetProcessor
+	ProcessorsMap map[arv1b1.OperationType][]PersistentVolumeProcessor
 }
 
-func (p *StatefulSetProcessor) Validate() error {
+func (p *PersistentVolumeProcessor) Validate() error {
 	if e := p.Metadata.Validate(); e != nil {
 		return e
 	}
@@ -37,12 +37,12 @@ func (p *StatefulSetProcessor) Validate() error {
 	return nil
 }
 
-func (c *StatefulSetConfig) Register(opType arv1b1.OperationType, ps ...StatefulSetProcessor) (errs []error) {
+func (c *PersistentVolumeConfig) Register(opType arv1b1.OperationType, ps ...PersistentVolumeProcessor) (errs []error) {
 	if c.ProcessorsMap == nil {
-		c.ProcessorsMap = make(map[arv1b1.OperationType][]StatefulSetProcessor, 1)
+		c.ProcessorsMap = make(map[arv1b1.OperationType][]PersistentVolumeProcessor, 1)
 	}
 	if len(c.ProcessorsMap[opType]) == 0 {
-		c.ProcessorsMap[opType] = make([]StatefulSetProcessor, 0, len(ps))
+		c.ProcessorsMap[opType] = make([]PersistentVolumeProcessor, 0, len(ps))
 	}
 	for i, p := range ps {
 		if e := p.Validate(); e != nil {
@@ -53,9 +53,9 @@ func (c *StatefulSetConfig) Register(opType arv1b1.OperationType, ps ...Stateful
 	return
 }
 
-func (c *StatefulSetConfig) ToConfig() (out *processor.Config) {
+func (c *PersistentVolumeConfig) ToConfig() (out *processor.Config) {
 	out = &processor.Config{
-		GroupVersionResource: statefulsetGRV,
+		GroupVersionResource: persistentvolumeGRV,
 		ProcessorsMap:        make(map[arv1b1.OperationType][]processor.Processor, len(c.ProcessorsMap)),
 	}
 	for opType, ps := range c.ProcessorsMap {
@@ -68,7 +68,7 @@ func (c *StatefulSetConfig) ToConfig() (out *processor.Config) {
 			ops = append(ops, processor.Processor{
 				Metadata: p.Metadata,
 				Review: func(obj runtime.Object) (err error) {
-					in := obj.(*appsv1.StatefulSet)
+					in := obj.(*corev1.PersistentVolume)
 					if in == nil {
 						err = fmt.Errorf("%s failed for input is nil", p.Name)
 					} else {

@@ -1,9 +1,11 @@
 package v1
 
 import (
+	"encoding/json"
 	"fmt"
+	"reflect"
 
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/processor"
 
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -12,32 +14,24 @@ import (
 
 var (
 	podsGRV = corev1.SchemeGroupVersion.WithResource("pods")
-	// gvk = corev1.SchemeGroupVersion.WithKind(reflect.TypeOf(&corev1.Pod{}).Name())
+	podsGVK = corev1.SchemeGroupVersion.WithKind(reflect.TypeOf(&corev1.Pod{}).Name())
 )
 
 type PodProcessor struct {
-	Name string
-	// IgnoreSetting set namespaces and annotations that will ignore this processor
-	IgnoreSetting *util.IgnoreSetting
-	// Type Validate or Mutate, decide weather to allow input object changes
-	Type util.ProcessorType
+	// Metadata, set name, type and ignore settings
+	processor.Metadata
 	// Review do review, return error if should stop
 	Review func(in *corev1.Pod) (err error)
 }
 
 type PodConfig struct {
-	// ModelName describe the model of this config, like app or resource
-	ModelName string
 	// ProcessorsMap map pod processors by operation type
 	ProcessorsMap map[arv1b1.OperationType][]PodProcessor
 }
 
 func (p *PodProcessor) Validate() error {
-	if p.Name == "" {
-		return fmt.Errorf("empty processor name")
-	}
-	if p.Type != util.ProcessorTypeValidate && p.Type != util.ProcessorTypeMutate {
-		return fmt.Errorf("%v invalid processor type %v", p.Name, p.Type)
+	if e := p.Metadata.Validate(); e != nil {
+		return e
 	}
 	if p.Review == nil {
 		return fmt.Errorf("%v nil processor review function", p.Name)
@@ -61,23 +55,27 @@ func (c *PodConfig) Register(opType arv1b1.OperationType, ps ...PodProcessor) (e
 	return
 }
 
-func (c *PodConfig) ToConfig() (out *util.Config) {
-	out = &util.Config{
-		ModelName:            c.ModelName,
+func (c *PodConfig) ToConfig() (out *processor.Config) {
+	out = &processor.Config{
 		GroupVersionResource: podsGRV,
-		ProcessorsMap:        make(map[arv1b1.OperationType][]util.Processor, len(c.ProcessorsMap)),
+		RawExtensionParser: func(raw *runtime.RawExtension) (runtime.Object, error) {
+			obj, e := GetPodFromRawExtension(raw)
+			if e != nil {
+				return nil, e
+			}
+			return obj, nil
+		},
+		ProcessorsMap: make(map[arv1b1.OperationType][]processor.Processor, len(c.ProcessorsMap)),
 	}
-	for opType, pps := range c.ProcessorsMap {
-		if len(pps) == 0 {
+	for opType, ps := range c.ProcessorsMap {
+		if len(ps) == 0 {
 			continue
 		}
-		out.ProcessorsMap[opType] = make([]util.Processor, 0, len(pps))
-		for i := range pps {
-			p := &pps[i]
-			out.ProcessorsMap[opType] = append(out.ProcessorsMap[opType], util.Processor{
-				Name:          p.Name,
-				IgnoreSetting: p.IgnoreSetting,
-				Type:          p.Type,
+		ops := make([]processor.Processor, 0, len(ps))
+		for i := range ps {
+			p := &ps[i]
+			ops = append(ops, processor.Processor{
+				Metadata: p.Metadata,
 				Review: func(obj runtime.Object) (err error) {
 					in := obj.(*corev1.Pod)
 					if in == nil {
@@ -89,6 +87,29 @@ func (c *PodConfig) ToConfig() (out *util.Config) {
 				},
 			})
 		}
+		if len(ops) > 0 {
+			out.ProcessorsMap[opType] = ops
+		}
+	}
+	if len(out.ProcessorsMap) == 0 {
+		return nil
 	}
 	return out
+}
+
+func GetPodFromRawExtension(raw *runtime.RawExtension) (*corev1.Pod, error) {
+	if raw == nil {
+		return nil, fmt.Errorf("runtime.RawExtension is nil")
+	}
+	if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != podsGVK {
+		return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), podsGVK.String())
+	}
+	if obj := raw.Object.(*corev1.Pod); obj != nil {
+		return obj, nil
+	}
+	parsed := &corev1.Pod{}
+	if e := json.Unmarshal(raw.Raw, parsed); e != nil {
+		return nil, e
+	}
+	return parsed, nil
 }

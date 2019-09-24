@@ -1,4 +1,4 @@
-package util
+package constants
 
 import (
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
@@ -17,7 +17,8 @@ var (
 		arv1b1.Create,
 		arv1b1.Update,
 		arv1b1.Delete,
-		arv1b1.Connect,
+		// arv1b1.OperationAll,
+		// arv1b1.Connect,
 	}
 )
 

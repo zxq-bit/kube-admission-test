@@ -64,7 +64,7 @@ var (
 )
 
 func flagInit() {
-	flag.StringVar(&templatePath, "templatePath", "object.go.yaml", "gen config file path")
+	flag.StringVar(&templatePath, "templatePath", "object.gohtml", "gen config file path")
 	flag.StringVar(&configPath, "configPath", "./config.yaml", "output template file path")
 	flag.StringVar(&outputPath, "outputPath", "./output", "gen output base dir path")
 	flag.Parse()

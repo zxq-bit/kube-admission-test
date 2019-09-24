@@ -16,6 +16,18 @@
   pkgname: corev1
   resourcename: secret
   kindname: Secret
+- apigroup: core
+  apiversion: v1
+  pkgpath: k8s.io/api/core/v1
+  pkgname: corev1
+  resourcename: persistentvolumeclaim
+  kindname: PersistentVolumeClaim
+- apigroup: core
+  apiversion: v1
+  pkgpath: k8s.io/api/core/v1
+  pkgname: corev1
+  resourcename: persistentvolume
+  kindname: PersistentVolume
 - apigroup: apps
   apiversion: v1
   pkgpath: k8s.io/api/apps/v1

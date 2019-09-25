@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-MAKER_DIR="../../../cmd/cfgmaker"
-OUTPUT_DIR="./configs"
+MAKER_DIR="../../../hack/cfgmaker"
+OUTPUT_DIR="./configs/apis"
 
 rm -rf ${OUTPUT_DIR}
 

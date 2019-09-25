@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/caicloud/clientset/kubernetes/scheme"
-	"github.com/caicloud/nirvana/log"
 	"github.com/mattbaird/jsonpatch"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -39,8 +37,8 @@ func ToAdmissionFailedResponse(uid types.UID, err error) *admissionv1b1.Admissio
 	}
 }
 
-func ToAdmissionPassResponse(uid types.UID, old, obj runtime.Object) *admissionv1b1.AdmissionResponse {
-	oldJSON, err := json.Marshal(old)
+func ToAdmissionPassResponse(uid types.UID, org, obj runtime.Object) *admissionv1b1.AdmissionResponse {
+	orgJSON, err := json.Marshal(org)
 	if err != nil {
 		return ToAdmissionFailedResponse(uid, err)
 
@@ -50,7 +48,7 @@ func ToAdmissionPassResponse(uid types.UID, old, obj runtime.Object) *admissionv
 		return ToAdmissionFailedResponse(uid, err)
 	}
 
-	rawPatch, err := jsonpatch.CreatePatch(oldJSON, objJSON)
+	rawPatch, err := jsonpatch.CreatePatch(orgJSON, objJSON)
 	if err != nil {
 		return ToAdmissionFailedResponse(uid, err)
 	}

@@ -1,7 +1,25 @@
 package constants
 
 import (
+	"time"
+
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	DefaultListenPort            = 6666
+	DefaultCertTempDir           = "/tmp"
+	DefaultCertFileName          = "admission.cert"
+	DefaultKeyFileName           = "admission.key"
+	AdmissionsAll                = "*"
+	DefaultServiceNamespace      = metav1.NamespaceSystem
+	DefaultServiceName           = "admission-server-collection"
+	DefaultInformerFactoryResync = 60 * time.Second
+
+	AdmissionSplitKey = ","
+
+	DefaultAPIRootPath = "/apis/v1alpha1"
 )
 
 const (

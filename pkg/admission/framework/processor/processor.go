@@ -34,6 +34,7 @@ func CombineProcessors(ps []Processor) util.ReviewFuncWithContext {
 		if interfaces.IsNil(obj) {
 			return fmt.Errorf("not metav1 object")
 		}
+		defer util.RemoveObjectAnno(obj, constants.AnnoKeyAdmissionIgnore)
 		// always return a not nil `out`, if out is nil, use in
 		for _, p := range ps {
 			// check ignore

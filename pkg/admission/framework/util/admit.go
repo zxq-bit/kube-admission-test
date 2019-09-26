@@ -13,8 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-type ReviewFunc func(in runtime.Object) (err error)
-type ReviewFuncWithContext func(ctx context.Context, in runtime.Object) (err error)
+type Review func(ctx context.Context, in runtime.Object) (err error)
 type AdmissionNirvanaFunc func(ctx context.Context, req *admissionv1b1.AdmissionReview) (resp *admissionv1b1.AdmissionReview)
 
 func ToAdmissionFailedResponse(uid types.UID, err error) *admissionv1b1.AdmissionResponse {

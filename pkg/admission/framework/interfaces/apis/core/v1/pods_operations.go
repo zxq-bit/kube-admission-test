@@ -1,37 +1,22 @@
 package v1
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/processor"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
 
+	"github.com/caicloud/go-common/interfaces"
 	"github.com/caicloud/nirvana/log"
 
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
-
-var (
-	podsGRV = corev1.SchemeGroupVersion.WithResource("pods")
-	podsGVK = corev1.SchemeGroupVersion.WithKind("Pod")
-)
-
-type PodProcessor struct {
-	// Metadata, set name, type and ignore settings
-	processor.Metadata
-	// Review do review, return error if should stop
-	Review func(in *corev1.Pod) (err error)
-}
-
-type PodConfig struct {
-	// TimeoutMap set total execute time of processors
-	TimeoutMap map[arv1b1.OperationType]time.Duration
-	// ProcessorsMap map pod processors by operation type
-	ProcessorsMap map[arv1b1.OperationType][]PodProcessor
-}
 
 func (p *PodProcessor) Validate() error {
 	if e := p.Metadata.Validate(); e != nil {
@@ -69,7 +54,7 @@ func (c *PodConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duratio
 	c.TimeoutMap[opType] = timeout
 }
 
-func (c *PodConfig) ToConfig() (out *processor.Config) {
+func (c *PodConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
 	out = &processor.Config{
 		GroupVersionResource: podsGRV,
 		RawExtensionParser: func(raw *runtime.RawExtension) (runtime.Object, error) {
@@ -80,34 +65,17 @@ func (c *PodConfig) ToConfig() (out *processor.Config) {
 			return obj, nil
 		},
 		TimeoutMap:    c.TimeoutMap,
-		ProcessorsMap: make(map[arv1b1.OperationType][]processor.Processor, len(c.ProcessorsMap)),
+		ProcessorsMap: make(map[arv1b1.OperationType]util.Review, len(c.ProcessorsMap)),
 	}
 	if out.TimeoutMap == nil {
 		out.TimeoutMap = map[arv1b1.OperationType]time.Duration{}
 	}
 	for opType, ps := range c.ProcessorsMap {
+		ps = FilterPodProcessors(ps, filter)
 		if len(ps) == 0 {
 			continue
 		}
-		ops := make([]processor.Processor, 0, len(ps))
-		for i := range ps {
-			p := &ps[i]
-			ops = append(ops, processor.Processor{
-				Metadata: p.Metadata,
-				Review: func(obj runtime.Object) (err error) {
-					in := obj.(*corev1.Pod)
-					if in == nil {
-						err = fmt.Errorf("%s failed for input is nil", p.Name)
-					} else {
-						err = p.Review(in)
-					}
-					return err
-				},
-			})
-		}
-		if len(ops) > 0 {
-			out.ProcessorsMap[opType] = ops
-		}
+		out.ProcessorsMap[opType] = CombinePodProcessors(ps)
 	}
 	if len(out.ProcessorsMap) == 0 {
 		return nil
@@ -130,4 +98,57 @@ func GetPodFromRawExtension(raw *runtime.RawExtension) (*corev1.Pod, error) {
 		return nil, e
 	}
 	return parsed, nil
+}
+
+func FilterPodProcessors(in []PodProcessor, filter processor.MetadataFilter) (out []PodProcessor) {
+	if filter == nil {
+		return in
+	}
+	for _, p := range in {
+		if filter(&p.Metadata) {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func CombinePodProcessors(ps []PodProcessor) util.Review {
+	return func(ctx context.Context, in runtime.Object) (err error) {
+		// check
+		if interfaces.IsNil(in) {
+			return fmt.Errorf("nil input")
+		}
+		obj := in.(*corev1.Pod)
+		if obj == nil {
+			return fmt.Errorf("not corev1.Pod")
+		}
+		defer util.RemoveObjectAnno(obj, constants.AnnoKeyAdmissionIgnore)
+		// execute processors
+		for _, p := range ps {
+			// check ignore
+			if ignoreReason := p.Metadata.GetObjectFilter()(obj); ignoreReason != nil {
+				log.Infof("%s skip for %s", p.Name, *ignoreReason)
+				continue
+			}
+			// do review
+			select {
+			case <-ctx.Done():
+				err = fmt.Errorf("processor chain not finished correctly, context ended")
+			default:
+				switch p.Type {
+				case constants.ProcessorTypeValidate:
+					err = p.Review(obj.DeepCopy())
+				case constants.ProcessorTypeMutate:
+					err = p.Review(obj)
+				default:
+					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
+				}
+			}
+			if err != nil {
+				log.Errorf("%s skip for unknown processor type '%v'", p.Type)
+				break
+			}
+		}
+		return
+	}
 }

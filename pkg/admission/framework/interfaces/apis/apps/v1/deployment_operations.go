@@ -1,37 +1,22 @@
 package v1
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/processor"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
 
+	"github.com/caicloud/go-common/interfaces"
 	"github.com/caicloud/nirvana/log"
 
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
-
-var (
-	deploymentGRV = appsv1.SchemeGroupVersion.WithResource("deployment")
-	deploymentGVK = appsv1.SchemeGroupVersion.WithKind("Deployment")
-)
-
-type DeploymentProcessor struct {
-	// Metadata, set name, type and ignore settings
-	processor.Metadata
-	// Review do review, return error if should stop
-	Review func(in *appsv1.Deployment) (err error)
-}
-
-type DeploymentConfig struct {
-	// TimeoutMap set total execute time of processors
-	TimeoutMap map[arv1b1.OperationType]time.Duration
-	// ProcessorsMap map pod processors by operation type
-	ProcessorsMap map[arv1b1.OperationType][]DeploymentProcessor
-}
 
 func (p *DeploymentProcessor) Validate() error {
 	if e := p.Metadata.Validate(); e != nil {
@@ -69,7 +54,7 @@ func (c *DeploymentConfig) SetTimeout(opType arv1b1.OperationType, timeout time.
 	c.TimeoutMap[opType] = timeout
 }
 
-func (c *DeploymentConfig) ToConfig() (out *processor.Config) {
+func (c *DeploymentConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
 	out = &processor.Config{
 		GroupVersionResource: deploymentGRV,
 		RawExtensionParser: func(raw *runtime.RawExtension) (runtime.Object, error) {
@@ -80,34 +65,17 @@ func (c *DeploymentConfig) ToConfig() (out *processor.Config) {
 			return obj, nil
 		},
 		TimeoutMap:    c.TimeoutMap,
-		ProcessorsMap: make(map[arv1b1.OperationType][]processor.Processor, len(c.ProcessorsMap)),
+		ProcessorsMap: make(map[arv1b1.OperationType]util.Review, len(c.ProcessorsMap)),
 	}
 	if out.TimeoutMap == nil {
 		out.TimeoutMap = map[arv1b1.OperationType]time.Duration{}
 	}
 	for opType, ps := range c.ProcessorsMap {
+		ps = FilterDeploymentProcessors(ps, filter)
 		if len(ps) == 0 {
 			continue
 		}
-		ops := make([]processor.Processor, 0, len(ps))
-		for i := range ps {
-			p := &ps[i]
-			ops = append(ops, processor.Processor{
-				Metadata: p.Metadata,
-				Review: func(obj runtime.Object) (err error) {
-					in := obj.(*appsv1.Deployment)
-					if in == nil {
-						err = fmt.Errorf("%s failed for input is nil", p.Name)
-					} else {
-						err = p.Review(in)
-					}
-					return err
-				},
-			})
-		}
-		if len(ops) > 0 {
-			out.ProcessorsMap[opType] = ops
-		}
+		out.ProcessorsMap[opType] = CombineDeploymentProcessors(ps)
 	}
 	if len(out.ProcessorsMap) == 0 {
 		return nil
@@ -130,4 +98,57 @@ func GetDeploymentFromRawExtension(raw *runtime.RawExtension) (*appsv1.Deploymen
 		return nil, e
 	}
 	return parsed, nil
+}
+
+func FilterDeploymentProcessors(in []DeploymentProcessor, filter processor.MetadataFilter) (out []DeploymentProcessor) {
+	if filter == nil {
+		return in
+	}
+	for _, p := range in {
+		if filter(&p.Metadata) {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func CombineDeploymentProcessors(ps []DeploymentProcessor) util.Review {
+	return func(ctx context.Context, in runtime.Object) (err error) {
+		// check
+		if interfaces.IsNil(in) {
+			return fmt.Errorf("nil input")
+		}
+		obj := in.(*appsv1.Deployment)
+		if obj == nil {
+			return fmt.Errorf("not appsv1.Deployment")
+		}
+		defer util.RemoveObjectAnno(obj, constants.AnnoKeyAdmissionIgnore)
+		// execute processors
+		for _, p := range ps {
+			// check ignore
+			if ignoreReason := p.Metadata.GetObjectFilter()(obj); ignoreReason != nil {
+				log.Infof("%s skip for %s", p.Name, *ignoreReason)
+				continue
+			}
+			// do review
+			select {
+			case <-ctx.Done():
+				err = fmt.Errorf("processor chain not finished correctly, context ended")
+			default:
+				switch p.Type {
+				case constants.ProcessorTypeValidate:
+					err = p.Review(obj.DeepCopy())
+				case constants.ProcessorTypeMutate:
+					err = p.Review(obj)
+				default:
+					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
+				}
+			}
+			if err != nil {
+				log.Errorf("%s skip for unknown processor type '%v'", p.Type)
+				break
+			}
+		}
+		return
+	}
 }

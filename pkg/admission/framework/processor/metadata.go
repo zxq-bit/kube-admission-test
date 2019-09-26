@@ -11,6 +11,9 @@ import (
 
 // ignore filter about
 
+// filter for Metadata, return true if object can be use
+type MetadataFilter func(metadata *Metadata) bool
+
 // processor metadata, set name, type and ignore settings
 type Metadata struct {
 	// Name describe the name of this processor, like deployment-workload-name
@@ -62,5 +65,12 @@ func (meta *Metadata) GetObjectFilter() util.ObjectIgnoreFilter {
 			}
 		}
 		return nil
+	}
+}
+
+func MakeMetaFilterByModel(modelNames []string) MetadataFilter {
+	modelFilter := util.MakeModelEnabledFilter(modelNames)
+	return func(metadata *Metadata) bool {
+		return modelFilter(metadata.ModelName)
 	}
 }

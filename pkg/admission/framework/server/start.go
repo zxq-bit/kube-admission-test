@@ -3,7 +3,7 @@ package server
 import (
 	"fmt"
 
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/model"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/interfaces"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/processor"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
 
@@ -14,7 +14,7 @@ func (s *Server) startModels(opt processor.StartOptions) (err error) {
 	// filter
 	filter := util.MakeModelEnabledFilter(opt.EnableOptions)
 	allModels := s.modelCollection.ListModels()
-	models := make([]model.Model, 0, len(allModels))
+	models := make([]interfaces.Model, 0, len(allModels))
 	for _, m := range allModels {
 		if filter(m.Name()) {
 			models = append(models, m)

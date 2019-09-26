@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"gopkg.in/yaml.v2"
@@ -53,8 +54,9 @@ func (c *Config) String() string {
 func (c *Config) OutputDir() string {
 	return filepath.Join(c.APIGroup, c.APIVersion)
 }
-func (c *Config) OutputFileName() string {
-	return fmt.Sprintf("%s.go", c.ResourceName)
+func (c *Config) OutputFileName(suffixes ...string) string {
+	vec := append([]string{c.ResourceName}, suffixes...)
+	return fmt.Sprintf("%s.go", strings.Join(vec, "_"))
 }
 
 var (
@@ -73,21 +75,35 @@ func flagInit() {
 	klog.Infof("parse outputPath: %v", outputPath)
 }
 
-func initTemplate() (t *template.Template) {
+func initTemplate() (tm map[string]*template.Template) {
+	var (
+		splitString = "\n<<<---=== i am split ===--->>>\n"
+		names       = []string{"types", "operations"}
+	)
 	b, e := ioutil.ReadFile(templatePath)
 	if e != nil {
 		klog.Exitf("read template file failed, %v", e)
 	}
-	t, e = template.New("object").Parse(string(b))
-	if e != nil {
-		klog.Exitf("parse template failed, %v", e)
+	raw := string(b)
+	texts := strings.Split(raw, splitString)
+	if len(texts) != len(names) {
+		klog.Exitf("parse template failed, split not correct")
 	}
-	return t
+	tm = make(map[string]*template.Template, len(names))
+	for i, name := range names {
+		text := texts[i]
+		t, e := template.New(name).Parse(text)
+		if e != nil {
+			klog.Exitf("parse template %s failed, %v", name, e)
+		}
+		tm[name] = t
+	}
+	return
 }
 
 func main() {
 	flagInit()
-	t := initTemplate()
+	tm := initTemplate()
 	// read
 	b, e := ioutil.ReadFile(configPath)
 	if e != nil {
@@ -108,15 +124,17 @@ func main() {
 		if e = os.MkdirAll(filepath.Join(outputPath, c.OutputDir()), 0775); e != nil {
 			klog.Exitf("[%d] %v mkdir failed, %v", i, c, e)
 		}
-		// exec
-		wr := new(bytes.Buffer)
-		if e = t.Execute(wr, c); e != nil {
-			klog.Exitf("[%d] %v execute failed, %v", i, c, e)
-		}
-		// write
-		e = ioutil.WriteFile(filepath.Join(outputPath, c.OutputDir(), c.OutputFileName()), wr.Bytes(), 0664)
-		if e != nil {
-			klog.Exitf("[%d] %v write failed, %v", i, c, e)
+		for name, t := range tm {
+			// exec
+			wr := new(bytes.Buffer)
+			if e = t.Execute(wr, c); e != nil {
+				klog.Exitf("[%d] %v execute %s failed, %v", i, c, name, e)
+			}
+			// write
+			e = ioutil.WriteFile(filepath.Join(outputPath, c.OutputDir(), c.OutputFileName(name)), wr.Bytes(), 0664)
+			if e != nil {
+				klog.Exitf("[%d] %v write %s failed, %v", i, c, name, e)
+			}
 		}
 	}
 }

@@ -32,7 +32,7 @@ type Config struct {
 	// TimeoutMap set total execute time of processors
 	TimeoutMap map[arv1b1.OperationType]time.Duration
 	// ProcessorsMap map processors by operation type
-	ProcessorsMap map[arv1b1.OperationType][]Processor
+	ProcessorsMap map[arv1b1.OperationType]util.Review
 }
 
 var (
@@ -49,8 +49,7 @@ func (c *Config) ToMutatingWebHook(opt *StartOptions) (re *arv1b1.MutatingWebhoo
 		Webhooks: make([]arv1b1.Webhook, 0, len(c.ProcessorsMap)),
 	}
 	for _, opType := range constants.OperationTypes {
-		ps := opt.FilterProcessorsByModel(c.ProcessorsMap[opType])
-		if len(ps) == 0 {
+		if c.ProcessorsMap[opType] == nil {
 			continue
 		}
 		re.Webhooks = append(re.Webhooks, arv1b1.Webhook{
@@ -88,12 +87,10 @@ func (c *Config) ToNirvanaDescriptors(opt *StartOptions) (re []definition.Descri
 	}
 	gvr := c.GroupVersionResource
 	for _, opType := range constants.OperationTypes {
-		ps := opt.FilterProcessorsByModel(c.ProcessorsMap[opType])
-		if len(ps) == 0 {
+		f := c.ProcessorsMap[opType]
+		if f == nil {
 			continue
 		}
-		// func
-		f := CombineProcessors(ps)
 		// timeout
 		var middlewares []definition.Middleware
 		if timeout, ok := c.TimeoutMap[opType]; ok && timeout > 0 {

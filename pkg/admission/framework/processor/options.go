@@ -16,12 +16,9 @@ type StartOptions struct {
 	APIRootPath string
 }
 
-func (opt *StartOptions) FilterProcessorsByModel(in []Processor) (out []Processor) {
-	isModelEnabled := util.MakeModelEnabledFilter(opt.EnableOptions)
-	for _, p := range in {
-		if isModelEnabled(p.ModelName) {
-			out = append(out, p)
-		}
+func (opt *StartOptions) GetProcessorFilter() (filter MetadataFilter) {
+	modelFilter := util.MakeModelEnabledFilter(opt.EnableOptions)
+	return func(metadata *Metadata) bool {
+		return modelFilter(metadata.ModelName)
 	}
-	return out
 }

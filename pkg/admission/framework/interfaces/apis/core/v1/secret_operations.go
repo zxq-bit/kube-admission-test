@@ -1,37 +1,22 @@
 package v1
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/processor"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
 
+	"github.com/caicloud/go-common/interfaces"
 	"github.com/caicloud/nirvana/log"
 
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
-
-var (
-	secretGRV = corev1.SchemeGroupVersion.WithResource("secret")
-	secretGVK = corev1.SchemeGroupVersion.WithKind("Secret")
-)
-
-type SecretProcessor struct {
-	// Metadata, set name, type and ignore settings
-	processor.Metadata
-	// Review do review, return error if should stop
-	Review func(in *corev1.Secret) (err error)
-}
-
-type SecretConfig struct {
-	// TimeoutMap set total execute time of processors
-	TimeoutMap map[arv1b1.OperationType]time.Duration
-	// ProcessorsMap map pod processors by operation type
-	ProcessorsMap map[arv1b1.OperationType][]SecretProcessor
-}
 
 func (p *SecretProcessor) Validate() error {
 	if e := p.Metadata.Validate(); e != nil {
@@ -69,7 +54,7 @@ func (c *SecretConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Dura
 	c.TimeoutMap[opType] = timeout
 }
 
-func (c *SecretConfig) ToConfig() (out *processor.Config) {
+func (c *SecretConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
 	out = &processor.Config{
 		GroupVersionResource: secretGRV,
 		RawExtensionParser: func(raw *runtime.RawExtension) (runtime.Object, error) {
@@ -80,34 +65,17 @@ func (c *SecretConfig) ToConfig() (out *processor.Config) {
 			return obj, nil
 		},
 		TimeoutMap:    c.TimeoutMap,
-		ProcessorsMap: make(map[arv1b1.OperationType][]processor.Processor, len(c.ProcessorsMap)),
+		ProcessorsMap: make(map[arv1b1.OperationType]util.Review, len(c.ProcessorsMap)),
 	}
 	if out.TimeoutMap == nil {
 		out.TimeoutMap = map[arv1b1.OperationType]time.Duration{}
 	}
 	for opType, ps := range c.ProcessorsMap {
+		ps = FilterSecretProcessors(ps, filter)
 		if len(ps) == 0 {
 			continue
 		}
-		ops := make([]processor.Processor, 0, len(ps))
-		for i := range ps {
-			p := &ps[i]
-			ops = append(ops, processor.Processor{
-				Metadata: p.Metadata,
-				Review: func(obj runtime.Object) (err error) {
-					in := obj.(*corev1.Secret)
-					if in == nil {
-						err = fmt.Errorf("%s failed for input is nil", p.Name)
-					} else {
-						err = p.Review(in)
-					}
-					return err
-				},
-			})
-		}
-		if len(ops) > 0 {
-			out.ProcessorsMap[opType] = ops
-		}
+		out.ProcessorsMap[opType] = CombineSecretProcessors(ps)
 	}
 	if len(out.ProcessorsMap) == 0 {
 		return nil
@@ -130,4 +98,57 @@ func GetSecretFromRawExtension(raw *runtime.RawExtension) (*corev1.Secret, error
 		return nil, e
 	}
 	return parsed, nil
+}
+
+func FilterSecretProcessors(in []SecretProcessor, filter processor.MetadataFilter) (out []SecretProcessor) {
+	if filter == nil {
+		return in
+	}
+	for _, p := range in {
+		if filter(&p.Metadata) {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func CombineSecretProcessors(ps []SecretProcessor) util.Review {
+	return func(ctx context.Context, in runtime.Object) (err error) {
+		// check
+		if interfaces.IsNil(in) {
+			return fmt.Errorf("nil input")
+		}
+		obj := in.(*corev1.Secret)
+		if obj == nil {
+			return fmt.Errorf("not corev1.Secret")
+		}
+		defer util.RemoveObjectAnno(obj, constants.AnnoKeyAdmissionIgnore)
+		// execute processors
+		for _, p := range ps {
+			// check ignore
+			if ignoreReason := p.Metadata.GetObjectFilter()(obj); ignoreReason != nil {
+				log.Infof("%s skip for %s", p.Name, *ignoreReason)
+				continue
+			}
+			// do review
+			select {
+			case <-ctx.Done():
+				err = fmt.Errorf("processor chain not finished correctly, context ended")
+			default:
+				switch p.Type {
+				case constants.ProcessorTypeValidate:
+					err = p.Review(obj.DeepCopy())
+				case constants.ProcessorTypeMutate:
+					err = p.Review(obj)
+				default:
+					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
+				}
+			}
+			if err != nil {
+				log.Errorf("%s skip for unknown processor type '%v'", p.Type)
+				break
+			}
+		}
+		return
+	}
 }

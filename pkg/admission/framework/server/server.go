@@ -1,9 +1,8 @@
 package server
 
 import (
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/configs"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/model"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/interfaces"
 
 	"github.com/caicloud/clientset/informers"
 	"github.com/caicloud/clientset/kubernetes"
@@ -21,8 +20,8 @@ type Server struct {
 	kc              kubernetes.Interface
 	informerFactory informers.SharedInformerFactory
 
-	modelCollection           model.Collection
-	processorConfigCollection configs.Collection
+	modelCollection  interfaces.ModelCollection
+	configCollection interfaces.ConfigCollection
 
 	stopCh chan struct{}
 }
@@ -89,9 +88,15 @@ func (s *Server) init(config *nirvana.Config) error {
 		return e
 	}
 	config.Configure(
-		nirvana.Descriptor(s.processorConfigCollection.GetDescriptors(&opt)...),
+		nirvana.Descriptor(s.configCollection.GetDescriptors(&opt)...),
 		nirvana.TLS(certFile, keyFile),
 	)
+
+	// webhooks
+	if e = s.ensureWebhooks(&opt); e != nil {
+		log.Errorf("ensureWebhooks failed, %v", e)
+		return e
+	}
 
 	return nil
 }

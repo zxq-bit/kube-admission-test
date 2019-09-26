@@ -46,7 +46,6 @@ func (c *DeploymentConfig) Register(opType arv1b1.OperationType, ps ...*Deployme
 		c.ProcessorsMap[opType] = append(c.ProcessorsMap[opType], *p)
 		log.Infof("appsv1.Deployment processor register done for [%d.%s], %v", i, p.Name)
 	}
-	return
 }
 
 func (c *DeploymentConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {

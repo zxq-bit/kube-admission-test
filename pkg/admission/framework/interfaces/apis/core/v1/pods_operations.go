@@ -46,7 +46,6 @@ func (c *PodConfig) Register(opType arv1b1.OperationType, ps ...*PodProcessor) {
 		c.ProcessorsMap[opType] = append(c.ProcessorsMap[opType], *p)
 		log.Infof("corev1.Pod processor register done for [%d.%s], %v", i, p.Name)
 	}
-	return
 }
 
 func (c *PodConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {

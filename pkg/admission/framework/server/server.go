@@ -51,8 +51,7 @@ func (s *Server) init(config *nirvana.Config) error {
 	kubeConfig := s.cfg.KubeConfig
 	log.Infof("parsed config: %s", s.cfg.String())
 	// config
-	e := s.cfg.Validate()
-	if e != nil {
+	if e := s.cfg.Validate(); e != nil {
 		log.Errorf("validate config failed, %v", e)
 		return e
 	}
@@ -65,12 +64,14 @@ func (s *Server) init(config *nirvana.Config) error {
 	}
 	s.kc, e = kubernetes.NewForConfig(restConf)
 	if e != nil {
+		log.Errorf("NewForConfig failed, %v", e)
 		return e
 	}
 	s.informerFactory = informers.NewSharedInformerFactory(s.kc, s.cfg.InformerFactoryResync)
 	// cert
 	caBundle, certFile, keyFile, e := s.ensureCert()
 	if e != nil {
+		log.Errorf("ensureCert failed, %v", e)
 		return e
 	}
 	opt := s.cfg.ToStartOptions()

@@ -46,7 +46,6 @@ func (c *PersistentVolumeConfig) Register(opType arv1b1.OperationType, ps ...*Pe
 		c.ProcessorsMap[opType] = append(c.ProcessorsMap[opType], *p)
 		log.Infof("corev1.PersistentVolume processor register done for [%d.%s], %v", i, p.Name)
 	}
-	return
 }
 
 func (c *PersistentVolumeConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {

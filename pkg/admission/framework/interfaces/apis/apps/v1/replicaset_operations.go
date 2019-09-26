@@ -46,7 +46,6 @@ func (c *ReplicaSetConfig) Register(opType arv1b1.OperationType, ps ...*ReplicaS
 		c.ProcessorsMap[opType] = append(c.ProcessorsMap[opType], *p)
 		log.Infof("appsv1.ReplicaSet processor register done for [%d.%s], %v", i, p.Name)
 	}
-	return
 }
 
 func (c *ReplicaSetConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {

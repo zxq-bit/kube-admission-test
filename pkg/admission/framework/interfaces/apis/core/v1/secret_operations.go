@@ -46,7 +46,6 @@ func (c *SecretConfig) Register(opType arv1b1.OperationType, ps ...*SecretProces
 		c.ProcessorsMap[opType] = append(c.ProcessorsMap[opType], *p)
 		log.Infof("corev1.Secret processor register done for [%d.%s], %v", i, p.Name)
 	}
-	return
 }
 
 func (c *SecretConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {

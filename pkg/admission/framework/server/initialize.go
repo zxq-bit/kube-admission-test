@@ -31,10 +31,10 @@ func (s *Server) initModelsAndProcessors() error {
 	s.configCollection.ConfigMapConfig.Register(arv1b1.Create,
 		demo.GetConfigMapStaticProcessor(),
 	)
+	// cm update
 	s.configCollection.ConfigMapConfig.SetTimeout(arv1b1.Update, 0)
 	s.configCollection.ConfigMapConfig.Register(arv1b1.Update,
 		demo.GetConfigMapStaticProcessor(),
 	)
-	// model
 	return nil
 }

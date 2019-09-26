@@ -77,7 +77,6 @@ func (c *{{.KindName}}Config) Register(opType arv1b1.OperationType, ps ...*{{.Ki
 		c.ProcessorsMap[opType] = append(c.ProcessorsMap[opType], *p)
 		log.Infof("{{.PkgName}}.{{.KindName}} processor register done for [%d.%s], %v", i, p.Name)
 	}
-	return
 }
 
 func (c *{{.KindName}}Config) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {

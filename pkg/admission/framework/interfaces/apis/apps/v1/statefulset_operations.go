@@ -46,7 +46,6 @@ func (c *StatefulSetConfig) Register(opType arv1b1.OperationType, ps ...*Statefu
 		c.ProcessorsMap[opType] = append(c.ProcessorsMap[opType], *p)
 		log.Infof("appsv1.StatefulSet processor register done for [%d.%s], %v", i, p.Name)
 	}
-	return
 }
 
 func (c *StatefulSetConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {

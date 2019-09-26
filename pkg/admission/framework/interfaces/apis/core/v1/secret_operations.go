@@ -41,8 +41,10 @@ func (c *SecretConfig) Register(opType arv1b1.OperationType, ps ...*SecretProces
 		}
 		if e := p.Validate(); e != nil {
 			log.Errorf("corev1.Secret processor register failed for [%d.%s], %v", i, p.Name, e)
+			continue
 		}
 		c.ProcessorsMap[opType] = append(c.ProcessorsMap[opType], *p)
+		log.Infof("corev1.Secret processor register done for [%d.%s], %v", i, p.Name)
 	}
 	return
 }

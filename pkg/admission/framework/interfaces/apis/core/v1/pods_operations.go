@@ -41,8 +41,10 @@ func (c *PodConfig) Register(opType arv1b1.OperationType, ps ...*PodProcessor) {
 		}
 		if e := p.Validate(); e != nil {
 			log.Errorf("corev1.Pod processor register failed for [%d.%s], %v", i, p.Name, e)
+			continue
 		}
 		c.ProcessorsMap[opType] = append(c.ProcessorsMap[opType], *p)
+		log.Infof("corev1.Pod processor register done for [%d.%s], %v", i, p.Name)
 	}
 	return
 }

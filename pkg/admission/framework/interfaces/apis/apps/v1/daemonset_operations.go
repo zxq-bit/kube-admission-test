@@ -41,8 +41,10 @@ func (c *DaemonSetConfig) Register(opType arv1b1.OperationType, ps ...*DaemonSet
 		}
 		if e := p.Validate(); e != nil {
 			log.Errorf("appsv1.DaemonSet processor register failed for [%d.%s], %v", i, p.Name, e)
+			continue
 		}
 		c.ProcessorsMap[opType] = append(c.ProcessorsMap[opType], *p)
+		log.Infof("appsv1.DaemonSet processor register done for [%d.%s], %v", i, p.Name)
 	}
 	return
 }

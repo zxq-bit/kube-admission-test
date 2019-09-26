@@ -72,8 +72,10 @@ func (c *{{.KindName}}Config) Register(opType arv1b1.OperationType, ps ...*{{.Ki
 		}
 		if e := p.Validate(); e != nil {
 			log.Errorf("{{.PkgName}}.{{.KindName}} processor register failed for [%d.%s], %v", i, p.Name, e)
+			continue
 		}
 		c.ProcessorsMap[opType] = append(c.ProcessorsMap[opType], *p)
+		log.Infof("{{.PkgName}}.{{.KindName}} processor register done for [%d.%s], %v", i, p.Name)
 	}
 	return
 }

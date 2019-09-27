@@ -4,15 +4,14 @@ import (
 	"fmt"
 
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/interfaces"
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/processor"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
 
 	"github.com/caicloud/nirvana/log"
 )
 
-func (s *Server) startModels(opt processor.StartOptions) (err error) {
+func (s *Server) startModels() (err error) {
 	// filter
-	filter := util.MakeModelEnabledFilter(opt.EnableOptions)
+	filter := util.MakeModelEnabledFilter(s.cfg.enableOptions)
 	allModels := s.modelCollection.ListModels()
 	models := make([]interfaces.Model, 0, len(allModels))
 	for _, m := range allModels {

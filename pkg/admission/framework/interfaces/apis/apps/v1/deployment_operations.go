@@ -39,12 +39,13 @@ func (c *DeploymentConfig) Register(opType arv1b1.OperationType, ps ...*Deployme
 		if p == nil {
 			continue
 		}
+		logPrefix := fmt.Sprintf("appsv1.Deployment[%v][%d][%s]", opType, i, p.Name)
 		if e := p.Validate(); e != nil {
-			log.Errorf("appsv1.Deployment processor register failed for [%d.%s], %v", i, p.Name, e)
+			log.Errorf("%s processor register failed, %v", logPrefix, e)
 			continue
 		}
 		c.ProcessorsMap[opType] = append(c.ProcessorsMap[opType], *p)
-		log.Infof("appsv1.Deployment processor register done for [%d.%s], %v", i, p.Name)
+		log.Infof("%s processor register done", logPrefix)
 	}
 }
 

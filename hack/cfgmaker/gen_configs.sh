@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-MAKER_DIR="../../../hack/cfgmaker"
-OUTPUT_DIR="./interfaces/apis"
+MAKER_DIR="."
+OUTPUT_DIR="../../pkg/admission/framework/interfaces/apis"
 
 rm -rf ${OUTPUT_DIR}
 

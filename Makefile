@@ -137,6 +137,14 @@ container: build-linux
 	    -f $(BUILD_DIR)/$${target}/Dockerfile .;                                       \
 	done
 
+docker:
+	@for target in $(TARGETS); do                                                      \
+	  image=$(IMAGE_PREFIX)$${target}$(IMAGE_SUFFIX);                                  \
+	  docker build -t $(REGISTRY)/$${image}:$(VERSION)                                 \
+	    --label $(DOCKER_LABELS)                                                       \
+	    -f $(BUILD_DIR)/$${target}/Dockerfile .;                                       \
+	done
+
 push: container
 	@for target in $(TARGETS); do                                                      \
 	  image=$(IMAGE_PREFIX)$${target}$(IMAGE_SUFFIX);                                  \

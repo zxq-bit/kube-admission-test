@@ -15,9 +15,12 @@ const (
 	AdmissionsAll                = "*"
 	DefaultServiceNamespace      = metav1.NamespaceSystem
 	DefaultServiceName           = "admission-server-collection"
+	DefaultServiceSelector       = "zxq-app:admission-test,selector-test:test"
 	DefaultInformerFactoryResync = 60 * time.Second
 
-	AdmissionSplitKey = ","
+	SelectorSplitKey   = ","
+	SelectorKVSplitKey = ":"
+	AdmissionSplitKey  = ","
 
 	DefaultAPIRootPath = "/apis/v1alpha1"
 )

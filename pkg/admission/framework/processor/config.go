@@ -10,10 +10,12 @@ import (
 
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util/middlewares/logger"
 
 	"github.com/caicloud/clientset/kubernetes/scheme"
 	"github.com/caicloud/go-common/nirvana/middleware"
 	"github.com/caicloud/nirvana/definition"
+	"github.com/caicloud/nirvana/log"
 
 	admissionv1b1 "k8s.io/api/admission/v1beta1"
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
@@ -92,10 +94,13 @@ func (c *Config) ToNirvanaDescriptors(opt *StartOptions) (re []definition.Descri
 			continue
 		}
 		// timeout
-		var middlewares []definition.Middleware
+		middlewares := []definition.Middleware{
+			logger.New(log.DefaultLogger()),
+		}
 		if timeout, ok := c.TimeoutMap[opType]; ok && timeout > 0 {
 			middlewares = append(middlewares, middleware.Timeout(timeout))
 		}
+		logBase := fmt.Sprintf("[%v/%v/%v|%v]", gvr.Group, gvr.Version, gvr.Resource, opType)
 		// descriptor
 		re = append(re, definition.Descriptor{
 			Path:        *joinWebHooksPath(opt.APIRootPath, gvr, opType),
@@ -103,20 +108,25 @@ func (c *Config) ToNirvanaDescriptors(opt *StartOptions) (re []definition.Descri
 			Definitions: []definition.Definition{
 				{
 					Method:      definition.Create,
-					Description: fmt.Sprintf("do admission for %v/%v/%v.%v", gvr.Group, gvr.Version, gvr.Resource, opType),
+					Description: fmt.Sprintf("do admission for %s", logBase),
+					Consumes:    []string{definition.MIMEAll},
+					Produces:    []string{definition.MIMEJSON},
 					Parameters: []definition.Parameter{
 						{
 							Source:      definition.Body,
 							Name:        "admissionReview",
 							Description: "admission body",
 							Operators: []definition.Operator{
-								definition.OperatorFunc("auto scaling group filter",
+								definition.OperatorFunc("AdmissionReview parse",
 									func(ctx context.Context, name string, body []byte) (*admissionv1b1.AdmissionReview, error) {
 										ar := admissionv1b1.AdmissionReview{}
 										gvk := admissionv1b1.SchemeGroupVersion.WithKind(reflect.TypeOf(ar).Name())
 										deserializer := scheme.Codecs.UniversalDeserializer()
 										if _, _, err := deserializer.Decode(body, &gvk, &ar); err != nil {
+											log.Errorf("%s decode AdmissionReview failed, %v", logBase, err)
 											ar.Response = util.ToAdmissionFailedResponse("", err)
+										} else {
+											log.Infof("%s decode AdmissionReview done: %s", logBase, string(body))
 										}
 										return &ar, nil
 									}),
@@ -130,16 +140,26 @@ func (c *Config) ToNirvanaDescriptors(opt *StartOptions) (re []definition.Descri
 						if ar.Response != nil {
 							return ar
 						}
+						if ar.Request == nil {
+							e := fmt.Errorf("empty AdmissionReview Request")
+							log.Errorf("%s check AdmissionReview failed, %v", logBase, e)
+							ar.Response = util.ToAdmissionFailedResponse("", e)
+							return ar
+						}
+						logPrefix := fmt.Sprintf("%s[%s/%s]", logBase, ar.Request.Namespace, ar.Request.Name)
 						org, e := c.RawExtensionParser(&ar.Request.Object)
 						if e != nil {
+							log.Errorf("%s RawExtensionParser failed, %v", logPrefix, e)
 							ar.Response = util.ToAdmissionFailedResponse(ar.Request.UID, e)
 							return ar
 						}
 						obj := org.DeepCopyObject()
 						if e = f(ctx, obj); e != nil {
+							log.Errorf("%s do review failed, %v", logPrefix, e)
 							ar.Response = util.ToAdmissionFailedResponse(ar.Request.UID, e)
 							return ar
 						}
+						log.Errorf("%s do review done", logPrefix)
 						ar.Response = util.ToAdmissionPassResponse(ar.Request.UID, org, obj)
 						return ar
 					},

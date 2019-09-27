@@ -24,8 +24,6 @@
 #   go-tests = true
 #   unused-packages = true
 
-required = ["github.com/caicloud/nirvana/utils/api"]
-
 [[constraint]]
   name = "github.com/caicloud/clientset"
   branch = "release-1.14"
@@ -34,9 +32,9 @@ required = ["github.com/caicloud/nirvana/utils/api"]
 #  name = "github.com/caicloud/nirvana"
 #  version = "=v0.2.1"
 
-[[constraint]]
-  name = "github.com/caicloud/go-common"
-  version = "=v0.2.0"
+#[[constraint]]
+#  name = "github.com/caicloud/go-common"
+#  version = "=v0.2.0"
 
 [prune]
   go-tests = true

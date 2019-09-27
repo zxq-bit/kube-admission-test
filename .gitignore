@@ -6,6 +6,7 @@
 
 # Test binary, build with `go test -c`
 *.test
+/hack/local-test/setting.sh
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
@@ -17,3 +18,4 @@ node_modules
 
 # GoLang IDE
 .idea
+.vscode

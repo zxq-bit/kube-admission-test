@@ -19,9 +19,13 @@ type Config struct {
 	// admit
 	ServiceNamespace string `desc:"admission service namespace"`
 	ServiceName      string `desc:"admission service name"`
+	ServiceSelector  string `desc:"admission service selector labels key value pairs"`
 	CertTempDir      string `desc:"admission server cert file template dir path"`
 	// enable
 	Admissions string `desc:"a list of admissions to enable. '*' enables all on-by-default admissions"`
+
+	enableOptions   []string
+	serviceSelector map[string]string
 }
 
 func NewDefaultConfig() *Config {
@@ -29,12 +33,13 @@ func NewDefaultConfig() *Config {
 		InformerFactoryResync: constants.DefaultInformerFactoryResync,
 		ServiceNamespace:      constants.DefaultServiceNamespace,
 		ServiceName:           constants.DefaultServiceName,
+		ServiceSelector:       constants.DefaultServiceSelector,
 		CertTempDir:           constants.DefaultCertTempDir,
 		Admissions:            constants.AdmissionsAll,
 	}
 }
 
-func (c *Config) Validate() error {
+func (c *Config) Validate() (e error) {
 	if c.InformerFactoryResync < 0 {
 		return fmt.Errorf("informer factory resync setting %v is invalid", c.InformerFactoryResync)
 	}
@@ -47,8 +52,11 @@ func (c *Config) Validate() error {
 	if c.CertTempDir == "" {
 		return fmt.Errorf("cert temp dir setting is empty")
 	}
-	if c.Admissions == "" {
-		return fmt.Errorf("admissions setting is empty")
+	if c.enableOptions, e = c.parsedEnableOptions(); e != nil {
+		return e
+	}
+	if c.serviceSelector, e = c.parsedServiceSelector(); e != nil {
+		return e
 	}
 	return nil
 }
@@ -59,10 +67,37 @@ func (c *Config) String() string {
 }
 
 func (c *Config) ToStartOptions() processor.StartOptions {
-	return processor.StartOptions{
-		EnableOptions:    strings.Split(c.Admissions, constants.AdmissionSplitKey),
+	opt := processor.StartOptions{
+		EnableOptions:    c.enableOptions,
 		ServiceNamespace: c.ServiceNamespace,
 		ServiceName:      c.ServiceName,
 		APIRootPath:      constants.DefaultAPIRootPath,
 	}
+	if len(opt.EnableOptions) == 0 {
+		opt.EnableOptions, _ = c.parsedEnableOptions()
+	}
+	return opt
+}
+
+func (c *Config) parsedEnableOptions() ([]string, error) {
+	if c.Admissions == "" {
+		return nil, fmt.Errorf("admissions setting is empty")
+	}
+	return strings.Split(c.Admissions, constants.AdmissionSplitKey), nil
+}
+
+func (c *Config) parsedServiceSelector() (map[string]string, error) {
+	if c.ServiceSelector == "" {
+		return nil, fmt.Errorf("service selector is empty")
+	}
+	kvs := strings.Split(c.ServiceSelector, constants.SelectorSplitKey)
+	re := make(map[string]string, len(kvs))
+	for i, s := range kvs {
+		kv := strings.Split(s, constants.SelectorKVSplitKey)
+		if len(kv) != 2 {
+			return re, fmt.Errorf("kv pair %d in bad format: '%s'", i, s)
+		}
+		re[kv[0]] = kv[1]
+	}
+	return re, nil
 }

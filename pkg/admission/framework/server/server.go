@@ -55,18 +55,20 @@ func (s *Server) init(config *nirvana.Config) error {
 		log.Errorf("validate config failed, %v", e)
 		return e
 	}
-	log.Info(s.cfg.String())
+	log.Infof("Validate done")
 	// kube
 	restConf, e := clientcmd.BuildConfigFromFlags(kubeHost, kubeConfig)
 	if e != nil {
 		log.Errorf("BuildConfigFromFlags failed, %v", e)
 		return e
 	}
+	log.Infof("BuildConfigFromFlags done")
 	s.kc, e = kubernetes.NewForConfig(restConf)
 	if e != nil {
 		log.Errorf("NewForConfig failed, %v", e)
 		return e
 	}
+	log.Infof("NewForConfig done")
 	s.informerFactory = informers.NewSharedInformerFactory(s.kc, s.cfg.InformerFactoryResync)
 	// cert
 	caBundle, certFile, keyFile, e := s.ensureCert()
@@ -74,6 +76,7 @@ func (s *Server) init(config *nirvana.Config) error {
 		log.Errorf("ensureCert failed, %v", e)
 		return e
 	}
+	log.Infof("ensureCert done")
 	opt := s.cfg.ToStartOptions()
 	opt.ServiceCABundle = caBundle
 
@@ -82,22 +85,33 @@ func (s *Server) init(config *nirvana.Config) error {
 		log.Errorf("initModelsAndProcessors failed, %v", e)
 		return e
 	}
+	log.Infof("initModelsAndProcessors done")
 
 	// start
-	if e = s.startModels(opt); e != nil {
+	if e = s.startModels(); e != nil {
 		log.Errorf("startModels failed, %v", e)
 		return e
 	}
+	log.Infof("startModels done")
 	config.Configure(
 		nirvana.Descriptor(s.configCollection.GetDescriptors(&opt)...),
 		nirvana.TLS(certFile, keyFile),
 	)
+	log.Infof("Configure done")
+
+	// service
+	if e = s.ensureService(int(config.Port())); e != nil {
+		log.Errorf("ensureService failed, %v", e)
+		return e
+	}
+	log.Infof("ensureService done")
 
 	// webhooks
 	if e = s.ensureWebhooks(&opt); e != nil {
 		log.Errorf("ensureWebhooks failed, %v", e)
 		return e
 	}
+	log.Infof("ensureWebhooks done")
 
 	return nil
 }

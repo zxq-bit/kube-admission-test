@@ -50,10 +50,10 @@ func (c *StatefulSetConfig) Register(opType arv1b1.OperationType, ps ...*Statefu
 }
 
 func (c *StatefulSetConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
-	if c.TimeoutMap == nil {
-		c.TimeoutMap = make(map[arv1b1.OperationType]time.Duration, 1)
+	if c.TimeoutSecondsMap == nil {
+		c.TimeoutSecondsMap = make(map[arv1b1.OperationType]int32, 1)
 	}
-	c.TimeoutMap[opType] = timeout
+	c.TimeoutSecondsMap[opType] = int32(timeout / time.Second)
 }
 
 func (c *StatefulSetConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
@@ -66,11 +66,11 @@ func (c *StatefulSetConfig) ToConfig(filter processor.MetadataFilter) (out *proc
 			}
 			return obj, nil
 		},
-		TimeoutMap:    c.TimeoutMap,
-		ProcessorsMap: make(map[arv1b1.OperationType]util.Review, len(c.ProcessorsMap)),
+		TimeoutSecondsMap: c.TimeoutSecondsMap,
+		ProcessorsMap:     make(map[arv1b1.OperationType]util.Review, len(c.ProcessorsMap)),
 	}
-	if out.TimeoutMap == nil {
-		out.TimeoutMap = map[arv1b1.OperationType]time.Duration{}
+	if out.TimeoutSecondsMap == nil {
+		out.TimeoutSecondsMap = map[arv1b1.OperationType]int32{}
 	}
 	for opType, ps := range c.ProcessorsMap {
 		ps = FilterStatefulSetProcessors(ps, filter)

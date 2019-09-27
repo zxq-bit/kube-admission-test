@@ -3,11 +3,15 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/processor"
+
+	"github.com/caicloud/go-common/cert"
 )
 
 type Config struct {
@@ -24,8 +28,12 @@ type Config struct {
 	// enable
 	Admissions string `desc:"a list of admissions to enable. '*' enables all on-by-default admissions"`
 
+	// private
 	enableOptions   []string
 	serviceSelector map[string]string
+	caBundle        []byte
+	certFile        string
+	keyFile         string
 }
 
 func NewDefaultConfig() *Config {
@@ -58,6 +66,9 @@ func (c *Config) Validate() (e error) {
 	if c.serviceSelector, e = c.parsedServiceSelector(); e != nil {
 		return e
 	}
+	if e = c.ensureCert(); e != nil {
+		return e
+	}
 	return nil
 }
 
@@ -71,12 +82,33 @@ func (c *Config) ToStartOptions() processor.StartOptions {
 		EnableOptions:    c.enableOptions,
 		ServiceNamespace: c.ServiceNamespace,
 		ServiceName:      c.ServiceName,
+		ServiceCABundle:  c.caBundle,
 		APIRootPath:      constants.DefaultAPIRootPath,
 	}
 	if len(opt.EnableOptions) == 0 {
 		opt.EnableOptions, _ = c.parsedEnableOptions()
 	}
 	return opt
+}
+
+func (c *Config) ensureCert() error {
+	certData, keyData, err := cert.GenSelfSignedCertForK8sService(c.ServiceNamespace, c.ServiceName)
+	if err != nil {
+		return err
+	}
+	c.caBundle = certData
+	c.certFile = filepath.Join(c.CertTempDir, constants.DefaultCertFileName)
+	c.keyFile = filepath.Join(c.CertTempDir, constants.DefaultKeyFileName)
+	dataPath := map[string][]byte{
+		c.certFile: certData,
+		c.keyFile:  keyData,
+	}
+	for fp, data := range dataPath {
+		if err = ioutil.WriteFile(fp, data, 0664); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (c *Config) parsedEnableOptions() ([]string, error) {

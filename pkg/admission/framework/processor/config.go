@@ -31,8 +31,8 @@ type Config struct {
 	GroupVersionResource schema.GroupVersionResource
 	// RawExtensionParser parser of RawExtension
 	RawExtensionParser RawExtensionParser
-	// TimeoutMap set total execute time of processors
-	TimeoutMap map[arv1b1.OperationType]time.Duration
+	// TimeoutSecondsMap set total execute time of processors
+	TimeoutSecondsMap map[arv1b1.OperationType]int32
 	// ProcessorsMap map processors by operation type
 	ProcessorsMap map[arv1b1.OperationType]util.Review
 }
@@ -54,6 +54,10 @@ func (c *Config) ToMutatingWebHook(opt *StartOptions) (re *arv1b1.MutatingWebhoo
 		if c.ProcessorsMap[opType] == nil {
 			continue
 		}
+		var timeoutSeconds *int32
+		if seconds, ok := c.TimeoutSecondsMap[opType]; ok && seconds > 0 {
+			timeoutSeconds = &seconds
+		}
 		re.Webhooks = append(re.Webhooks, arv1b1.Webhook{
 			Name: util.JoinObjectName(gvr.Group, gvr.Version, gvr.Resource, string(opType)),
 			Rules: []arv1b1.RuleWithOperations{
@@ -74,7 +78,8 @@ func (c *Config) ToMutatingWebHook(opt *StartOptions) (re *arv1b1.MutatingWebhoo
 				},
 				CABundle: opt.ServiceCABundle,
 			},
-			FailurePolicy: &failurePolicyTypeFail,
+			TimeoutSeconds: timeoutSeconds,
+			FailurePolicy:  &failurePolicyTypeFail,
 		})
 	}
 	if len(re.Webhooks) == 0 {
@@ -97,8 +102,8 @@ func (c *Config) ToNirvanaDescriptors(opt *StartOptions) (re []definition.Descri
 		middlewares := []definition.Middleware{
 			logger.New(log.DefaultLogger()),
 		}
-		if timeout, ok := c.TimeoutMap[opType]; ok && timeout > 0 {
-			middlewares = append(middlewares, middleware.Timeout(timeout))
+		if seconds, ok := c.TimeoutSecondsMap[opType]; ok && seconds > 0 {
+			middlewares = append(middlewares, middleware.Timeout(time.Duration(seconds)*time.Second))
 		}
 		logBase := fmt.Sprintf("[%v/%v/%v|%v]", gvr.Group, gvr.Version, gvr.Resource, opType)
 		// descriptor

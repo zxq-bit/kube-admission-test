@@ -1,8 +1,6 @@
 package v1
 
 import (
-	"time"
-
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/processor"
 
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
@@ -22,8 +20,8 @@ type {{.KindName}}Processor struct {
 }
 
 type {{.KindName}}Config struct {
-	// TimeoutMap set total execute time of processors
-	TimeoutMap map[arv1b1.OperationType]time.Duration
+	// TimeoutSecondsMap set total execute time by second of processors
+	TimeoutSecondsMap map[arv1b1.OperationType]int32
 	// ProcessorsMap map {{.KindName}} processors by operation type
 	ProcessorsMap map[arv1b1.OperationType][]{{.KindName}}Processor
 }
@@ -81,10 +79,10 @@ func (c *{{.KindName}}Config) Register(opType arv1b1.OperationType, ps ...*{{.Ki
 }
 
 func (c *{{.KindName}}Config) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
-	if c.TimeoutMap == nil {
-		c.TimeoutMap = make(map[arv1b1.OperationType]time.Duration, 1)
+	if c.TimeoutSecondsMap == nil {
+		c.TimeoutSecondsMap = make(map[arv1b1.OperationType]int32, 1)
 	}
-	c.TimeoutMap[opType] = timeout
+	c.TimeoutSecondsMap[opType] = int32(timeout / time.Second)
 }
 
 func (c *{{.KindName}}Config) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
@@ -97,11 +95,11 @@ func (c *{{.KindName}}Config) ToConfig(filter processor.MetadataFilter) (out *pr
 			}
 			return obj, nil
 		},
-		TimeoutMap:    c.TimeoutMap,
-		ProcessorsMap: make(map[arv1b1.OperationType]util.Review, len(c.ProcessorsMap)),
+		TimeoutSecondsMap: c.TimeoutSecondsMap,
+		ProcessorsMap:     make(map[arv1b1.OperationType]util.Review, len(c.ProcessorsMap)),
 	}
-	if out.TimeoutMap == nil {
-		out.TimeoutMap = map[arv1b1.OperationType]time.Duration{}
+	if out.TimeoutSecondsMap == nil {
+		out.TimeoutSecondsMap = map[arv1b1.OperationType]int32{}
 	}
 	for opType, ps := range c.ProcessorsMap {
 		ps = Filter{{.KindName}}Processors(ps, filter)

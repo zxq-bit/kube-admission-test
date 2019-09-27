@@ -36,8 +36,8 @@ func NewServer() (*Server, error) {
 	}
 	s.cmd.AddOption("", &s.cfg)
 	s.cmd.SetHook(&config.NirvanaCommandHookFunc{
-		PreConfigureFunc: s.init,
-		PostServeFunc:    s.postServe,
+		PostConfigureFunc: s.init,
+		PostServeFunc:     s.postServe,
 	})
 	return s, nil
 }
@@ -56,6 +56,8 @@ func (s *Server) init(config *nirvana.Config) error {
 		return e
 	}
 	log.Infof("Validate done")
+	// opt
+	opt := s.cfg.ToStartOptions()
 	// kube
 	restConf, e := clientcmd.BuildConfigFromFlags(kubeHost, kubeConfig)
 	if e != nil {
@@ -70,15 +72,6 @@ func (s *Server) init(config *nirvana.Config) error {
 	}
 	log.Infof("NewForConfig done")
 	s.informerFactory = informers.NewSharedInformerFactory(s.kc, s.cfg.InformerFactoryResync)
-	// cert
-	caBundle, certFile, keyFile, e := s.ensureCert()
-	if e != nil {
-		log.Errorf("ensureCert failed, %v", e)
-		return e
-	}
-	log.Infof("ensureCert done")
-	opt := s.cfg.ToStartOptions()
-	opt.ServiceCABundle = caBundle
 
 	// init
 	if e = s.initModelsAndProcessors(); e != nil {
@@ -93,9 +86,11 @@ func (s *Server) init(config *nirvana.Config) error {
 		return e
 	}
 	log.Infof("startModels done")
+	log.Infof("s.cfg.certFile:%s", s.cfg.certFile)
+	log.Infof("s.cfg.keyFile:%s", s.cfg.keyFile)
 	config.Configure(
 		nirvana.Descriptor(s.configCollection.GetDescriptors(&opt)...),
-		nirvana.TLS(certFile, keyFile),
+		nirvana.TLS(s.cfg.certFile, s.cfg.keyFile),
 	)
 	log.Infof("Configure done")
 
@@ -116,6 +111,12 @@ func (s *Server) init(config *nirvana.Config) error {
 	return nil
 }
 
+func (s *Server) postConfig(config *nirvana.Config, ns nirvana.Server, _ error) error {
+	config.Configure(
+		nirvana.TLS(s.cfg.certFile, s.cfg.keyFile),
+	)
+	return nil
+}
 func (s *Server) postServe(_ *nirvana.Config, _ nirvana.Server, _ error) error {
 	close(s.stopCh)
 	return nil

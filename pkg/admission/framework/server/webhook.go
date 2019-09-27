@@ -2,13 +2,9 @@ package server
 
 import (
 	"fmt"
-	"io/ioutil"
-	"path/filepath"
 
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/processor"
 
-	"github.com/caicloud/go-common/cert"
 	"github.com/caicloud/go-common/kubernetes/errors"
 	"github.com/caicloud/nirvana/log"
 
@@ -16,26 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
-
-func (s *Server) ensureCert() (caBundle []byte, certFile, keyFile string, err error) {
-	certData, keyData, err := cert.GenSelfSignedCertForK8sService(s.cfg.ServiceNamespace, s.cfg.ServiceName)
-	if err != nil {
-		return
-	}
-	caBundle = certData
-	certFile = filepath.Join(s.cfg.CertTempDir, constants.DefaultCertFileName)
-	keyFile = filepath.Join(s.cfg.CertTempDir, constants.DefaultKeyFileName)
-	dataPath := map[string][]byte{
-		certFile: certData,
-		keyFile:  keyData,
-	}
-	for fp, data := range dataPath {
-		if err = ioutil.WriteFile(fp, data, 0664); err != nil {
-			return
-		}
-	}
-	return
-}
 
 func (s *Server) ensureWebhooks(opt *processor.StartOptions) error {
 	webhooks := s.configCollection.GetMutatingWebHooks(opt)

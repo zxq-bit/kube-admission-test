@@ -1,8 +1,6 @@
 package v1
 
 import (
-	"time"
-
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/processor"
 
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
@@ -22,8 +20,8 @@ type DaemonSetProcessor struct {
 }
 
 type DaemonSetConfig struct {
-	// TimeoutMap set total execute time of processors
-	TimeoutMap map[arv1b1.OperationType]time.Duration
+	// TimeoutSecondsMap set total execute time by second of processors
+	TimeoutSecondsMap map[arv1b1.OperationType]int32
 	// ProcessorsMap map DaemonSet processors by operation type
 	ProcessorsMap map[arv1b1.OperationType][]DaemonSetProcessor
 }

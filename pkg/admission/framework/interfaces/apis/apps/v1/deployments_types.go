@@ -8,20 +8,20 @@ import (
 )
 
 var (
-	daemonsetGRV = appsv1.SchemeGroupVersion.WithResource("daemonset")
-	daemonsetGVK = appsv1.SchemeGroupVersion.WithKind("DaemonSet")
+	deploymentsGRV = appsv1.SchemeGroupVersion.WithResource("deployments")
+	deploymentsGVK = appsv1.SchemeGroupVersion.WithKind("Deployment")
 )
 
-type DaemonSetProcessor struct {
+type DeploymentProcessor struct {
 	// Metadata, set name, type and ignore settings
 	processor.Metadata
 	// Review do review, return error if should stop
-	Review func(in *appsv1.DaemonSet) (err error)
+	Review func(in *appsv1.Deployment) (err error)
 }
 
-type DaemonSetConfig struct {
+type DeploymentConfig struct {
 	// TimeoutSecondsMap set total execute time by second of processors
 	TimeoutSecondsMap map[arv1b1.OperationType]int32
-	// ProcessorsMap map DaemonSet processors by operation type
-	ProcessorsMap map[arv1b1.OperationType][]DaemonSetProcessor
+	// ProcessorsMap map Deployment processors by operation type
+	ProcessorsMap map[arv1b1.OperationType][]DeploymentProcessor
 }

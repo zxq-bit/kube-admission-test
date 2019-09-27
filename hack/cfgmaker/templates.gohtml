@@ -118,11 +118,13 @@ func Get{{.KindName}}FromRawExtension(raw *runtime.RawExtension) (*{{.PkgName}}.
 	if raw == nil {
 		return nil, fmt.Errorf("runtime.RawExtension is nil")
 	}
-	if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != {{.ResourceName}}GVK {
-		return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), {{.ResourceName}}GVK.String())
-	}
-	if obj := raw.Object.(*{{.PkgName}}.{{.KindName}}); obj != nil {
-		return obj, nil
+	if !interfaces.IsNil(raw.Object) {
+		if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != {{.ResourceName}}GVK {
+			return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), {{.ResourceName}}GVK.String())
+		}
+		if obj := raw.Object.(*{{.PkgName}}.{{.KindName}}); obj != nil {
+			return obj, nil
+		}
 	}
 	parsed := &{{.PkgName}}.{{.KindName}}{}
 	if e := json.Unmarshal(raw.Raw, parsed); e != nil {

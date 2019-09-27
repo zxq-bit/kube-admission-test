@@ -18,7 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func (p *PersistentVolumeProcessor) Validate() error {
+func (p *ConfigMapProcessor) Validate() error {
 	if e := p.Metadata.Validate(); e != nil {
 		return e
 	}
@@ -28,18 +28,18 @@ func (p *PersistentVolumeProcessor) Validate() error {
 	return nil
 }
 
-func (c *PersistentVolumeConfig) Register(opType arv1b1.OperationType, ps ...*PersistentVolumeProcessor) {
+func (c *ConfigMapConfig) Register(opType arv1b1.OperationType, ps ...*ConfigMapProcessor) {
 	if c.ProcessorsMap == nil {
-		c.ProcessorsMap = make(map[arv1b1.OperationType][]PersistentVolumeProcessor, 1)
+		c.ProcessorsMap = make(map[arv1b1.OperationType][]ConfigMapProcessor, 1)
 	}
 	if len(c.ProcessorsMap[opType]) == 0 {
-		c.ProcessorsMap[opType] = make([]PersistentVolumeProcessor, 0, len(ps))
+		c.ProcessorsMap[opType] = make([]ConfigMapProcessor, 0, len(ps))
 	}
 	for i, p := range ps {
 		if p == nil {
 			continue
 		}
-		logPrefix := fmt.Sprintf("corev1.PersistentVolume[%v][%d][%s]", opType, i, p.Name)
+		logPrefix := fmt.Sprintf("corev1.ConfigMap[%v][%d][%s]", opType, i, p.Name)
 		if e := p.Validate(); e != nil {
 			log.Errorf("%s processor register failed, %v", logPrefix, e)
 			continue
@@ -49,18 +49,18 @@ func (c *PersistentVolumeConfig) Register(opType arv1b1.OperationType, ps ...*Pe
 	}
 }
 
-func (c *PersistentVolumeConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
+func (c *ConfigMapConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
 	if c.TimeoutSecondsMap == nil {
 		c.TimeoutSecondsMap = make(map[arv1b1.OperationType]int32, 1)
 	}
 	c.TimeoutSecondsMap[opType] = int32(timeout / time.Second)
 }
 
-func (c *PersistentVolumeConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
+func (c *ConfigMapConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
 	out = &processor.Config{
-		GroupVersionResource: persistentvolumeGRV,
+		GroupVersionResource: configmapsGRV,
 		RawExtensionParser: func(raw *runtime.RawExtension) (runtime.Object, error) {
-			obj, e := GetPersistentVolumeFromRawExtension(raw)
+			obj, e := GetConfigMapFromRawExtension(raw)
 			if e != nil {
 				return nil, e
 			}
@@ -73,11 +73,11 @@ func (c *PersistentVolumeConfig) ToConfig(filter processor.MetadataFilter) (out 
 		out.TimeoutSecondsMap = map[arv1b1.OperationType]int32{}
 	}
 	for opType, ps := range c.ProcessorsMap {
-		ps = FilterPersistentVolumeProcessors(ps, filter)
+		ps = FilterConfigMapProcessors(ps, filter)
 		if len(ps) == 0 {
 			continue
 		}
-		out.ProcessorsMap[opType] = CombinePersistentVolumeProcessors(ps)
+		out.ProcessorsMap[opType] = CombineConfigMapProcessors(ps)
 	}
 	if len(out.ProcessorsMap) == 0 {
 		return nil
@@ -85,24 +85,26 @@ func (c *PersistentVolumeConfig) ToConfig(filter processor.MetadataFilter) (out 
 	return out
 }
 
-func GetPersistentVolumeFromRawExtension(raw *runtime.RawExtension) (*corev1.PersistentVolume, error) {
+func GetConfigMapFromRawExtension(raw *runtime.RawExtension) (*corev1.ConfigMap, error) {
 	if raw == nil {
 		return nil, fmt.Errorf("runtime.RawExtension is nil")
 	}
-	if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != persistentvolumeGVK {
-		return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), persistentvolumeGVK.String())
+	if !interfaces.IsNil(raw.Object) {
+		if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != configmapsGVK {
+			return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), configmapsGVK.String())
+		}
+		if obj := raw.Object.(*corev1.ConfigMap); obj != nil {
+			return obj, nil
+		}
 	}
-	if obj := raw.Object.(*corev1.PersistentVolume); obj != nil {
-		return obj, nil
-	}
-	parsed := &corev1.PersistentVolume{}
+	parsed := &corev1.ConfigMap{}
 	if e := json.Unmarshal(raw.Raw, parsed); e != nil {
 		return nil, e
 	}
 	return parsed, nil
 }
 
-func FilterPersistentVolumeProcessors(in []PersistentVolumeProcessor, filter processor.MetadataFilter) (out []PersistentVolumeProcessor) {
+func FilterConfigMapProcessors(in []ConfigMapProcessor, filter processor.MetadataFilter) (out []ConfigMapProcessor) {
 	if filter == nil {
 		return in
 	}
@@ -114,15 +116,15 @@ func FilterPersistentVolumeProcessors(in []PersistentVolumeProcessor, filter pro
 	return out
 }
 
-func CombinePersistentVolumeProcessors(ps []PersistentVolumeProcessor) util.Review {
+func CombineConfigMapProcessors(ps []ConfigMapProcessor) util.Review {
 	return func(ctx context.Context, in runtime.Object) (err error) {
 		// check
 		if interfaces.IsNil(in) {
 			return fmt.Errorf("nil input")
 		}
-		obj := in.(*corev1.PersistentVolume)
+		obj := in.(*corev1.ConfigMap)
 		if obj == nil {
-			return fmt.Errorf("not corev1.PersistentVolume")
+			return fmt.Errorf("not corev1.ConfigMap")
 		}
 		defer util.RemoveObjectAnno(obj, constants.AnnoKeyAdmissionIgnore)
 		// execute processors

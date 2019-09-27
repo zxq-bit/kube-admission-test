@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	persistentvolumeclaimGRV = corev1.SchemeGroupVersion.WithResource("persistentvolumeclaim")
-	persistentvolumeclaimGVK = corev1.SchemeGroupVersion.WithKind("PersistentVolumeClaim")
+	persistentvolumeclaimsGRV = corev1.SchemeGroupVersion.WithResource("persistentvolumeclaims")
+	persistentvolumeclaimsGVK = corev1.SchemeGroupVersion.WithKind("PersistentVolumeClaim")
 )
 
 type PersistentVolumeClaimProcessor struct {

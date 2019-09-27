@@ -18,7 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func (p *PodProcessor) Validate() error {
+func (p *ServiceProcessor) Validate() error {
 	if e := p.Metadata.Validate(); e != nil {
 		return e
 	}
@@ -28,18 +28,18 @@ func (p *PodProcessor) Validate() error {
 	return nil
 }
 
-func (c *PodConfig) Register(opType arv1b1.OperationType, ps ...*PodProcessor) {
+func (c *ServiceConfig) Register(opType arv1b1.OperationType, ps ...*ServiceProcessor) {
 	if c.ProcessorsMap == nil {
-		c.ProcessorsMap = make(map[arv1b1.OperationType][]PodProcessor, 1)
+		c.ProcessorsMap = make(map[arv1b1.OperationType][]ServiceProcessor, 1)
 	}
 	if len(c.ProcessorsMap[opType]) == 0 {
-		c.ProcessorsMap[opType] = make([]PodProcessor, 0, len(ps))
+		c.ProcessorsMap[opType] = make([]ServiceProcessor, 0, len(ps))
 	}
 	for i, p := range ps {
 		if p == nil {
 			continue
 		}
-		logPrefix := fmt.Sprintf("corev1.Pod[%v][%d][%s]", opType, i, p.Name)
+		logPrefix := fmt.Sprintf("corev1.Service[%v][%d][%s]", opType, i, p.Name)
 		if e := p.Validate(); e != nil {
 			log.Errorf("%s processor register failed, %v", logPrefix, e)
 			continue
@@ -49,18 +49,18 @@ func (c *PodConfig) Register(opType arv1b1.OperationType, ps ...*PodProcessor) {
 	}
 }
 
-func (c *PodConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
+func (c *ServiceConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
 	if c.TimeoutSecondsMap == nil {
 		c.TimeoutSecondsMap = make(map[arv1b1.OperationType]int32, 1)
 	}
 	c.TimeoutSecondsMap[opType] = int32(timeout / time.Second)
 }
 
-func (c *PodConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
+func (c *ServiceConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
 	out = &processor.Config{
-		GroupVersionResource: podsGRV,
+		GroupVersionResource: servicesGRV,
 		RawExtensionParser: func(raw *runtime.RawExtension) (runtime.Object, error) {
-			obj, e := GetPodFromRawExtension(raw)
+			obj, e := GetServiceFromRawExtension(raw)
 			if e != nil {
 				return nil, e
 			}
@@ -73,11 +73,11 @@ func (c *PodConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Co
 		out.TimeoutSecondsMap = map[arv1b1.OperationType]int32{}
 	}
 	for opType, ps := range c.ProcessorsMap {
-		ps = FilterPodProcessors(ps, filter)
+		ps = FilterServiceProcessors(ps, filter)
 		if len(ps) == 0 {
 			continue
 		}
-		out.ProcessorsMap[opType] = CombinePodProcessors(ps)
+		out.ProcessorsMap[opType] = CombineServiceProcessors(ps)
 	}
 	if len(out.ProcessorsMap) == 0 {
 		return nil
@@ -85,26 +85,26 @@ func (c *PodConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Co
 	return out
 }
 
-func GetPodFromRawExtension(raw *runtime.RawExtension) (*corev1.Pod, error) {
+func GetServiceFromRawExtension(raw *runtime.RawExtension) (*corev1.Service, error) {
 	if raw == nil {
 		return nil, fmt.Errorf("runtime.RawExtension is nil")
 	}
 	if !interfaces.IsNil(raw.Object) {
-		if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != podsGVK {
-			return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), podsGVK.String())
+		if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != servicesGVK {
+			return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), servicesGVK.String())
 		}
-		if obj := raw.Object.(*corev1.Pod); obj != nil {
+		if obj := raw.Object.(*corev1.Service); obj != nil {
 			return obj, nil
 		}
 	}
-	parsed := &corev1.Pod{}
+	parsed := &corev1.Service{}
 	if e := json.Unmarshal(raw.Raw, parsed); e != nil {
 		return nil, e
 	}
 	return parsed, nil
 }
 
-func FilterPodProcessors(in []PodProcessor, filter processor.MetadataFilter) (out []PodProcessor) {
+func FilterServiceProcessors(in []ServiceProcessor, filter processor.MetadataFilter) (out []ServiceProcessor) {
 	if filter == nil {
 		return in
 	}
@@ -116,15 +116,15 @@ func FilterPodProcessors(in []PodProcessor, filter processor.MetadataFilter) (ou
 	return out
 }
 
-func CombinePodProcessors(ps []PodProcessor) util.Review {
+func CombineServiceProcessors(ps []ServiceProcessor) util.Review {
 	return func(ctx context.Context, in runtime.Object) (err error) {
 		// check
 		if interfaces.IsNil(in) {
 			return fmt.Errorf("nil input")
 		}
-		obj := in.(*corev1.Pod)
+		obj := in.(*corev1.Service)
 		if obj == nil {
-			return fmt.Errorf("not corev1.Pod")
+			return fmt.Errorf("not corev1.Service")
 		}
 		defer util.RemoveObjectAnno(obj, constants.AnnoKeyAdmissionIgnore)
 		// execute processors

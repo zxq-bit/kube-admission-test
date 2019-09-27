@@ -14,11 +14,11 @@ import (
 	"github.com/caicloud/nirvana/log"
 
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
-	corev1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func (p *PersistentVolumeClaimProcessor) Validate() error {
+func (p *DaemonSetProcessor) Validate() error {
 	if e := p.Metadata.Validate(); e != nil {
 		return e
 	}
@@ -28,18 +28,18 @@ func (p *PersistentVolumeClaimProcessor) Validate() error {
 	return nil
 }
 
-func (c *PersistentVolumeClaimConfig) Register(opType arv1b1.OperationType, ps ...*PersistentVolumeClaimProcessor) {
+func (c *DaemonSetConfig) Register(opType arv1b1.OperationType, ps ...*DaemonSetProcessor) {
 	if c.ProcessorsMap == nil {
-		c.ProcessorsMap = make(map[arv1b1.OperationType][]PersistentVolumeClaimProcessor, 1)
+		c.ProcessorsMap = make(map[arv1b1.OperationType][]DaemonSetProcessor, 1)
 	}
 	if len(c.ProcessorsMap[opType]) == 0 {
-		c.ProcessorsMap[opType] = make([]PersistentVolumeClaimProcessor, 0, len(ps))
+		c.ProcessorsMap[opType] = make([]DaemonSetProcessor, 0, len(ps))
 	}
 	for i, p := range ps {
 		if p == nil {
 			continue
 		}
-		logPrefix := fmt.Sprintf("corev1.PersistentVolumeClaim[%v][%d][%s]", opType, i, p.Name)
+		logPrefix := fmt.Sprintf("appsv1.DaemonSet[%v][%d][%s]", opType, i, p.Name)
 		if e := p.Validate(); e != nil {
 			log.Errorf("%s processor register failed, %v", logPrefix, e)
 			continue
@@ -49,18 +49,18 @@ func (c *PersistentVolumeClaimConfig) Register(opType arv1b1.OperationType, ps .
 	}
 }
 
-func (c *PersistentVolumeClaimConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
+func (c *DaemonSetConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
 	if c.TimeoutSecondsMap == nil {
 		c.TimeoutSecondsMap = make(map[arv1b1.OperationType]int32, 1)
 	}
 	c.TimeoutSecondsMap[opType] = int32(timeout / time.Second)
 }
 
-func (c *PersistentVolumeClaimConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
+func (c *DaemonSetConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
 	out = &processor.Config{
-		GroupVersionResource: persistentvolumeclaimGRV,
+		GroupVersionResource: daemonsetsGRV,
 		RawExtensionParser: func(raw *runtime.RawExtension) (runtime.Object, error) {
-			obj, e := GetPersistentVolumeClaimFromRawExtension(raw)
+			obj, e := GetDaemonSetFromRawExtension(raw)
 			if e != nil {
 				return nil, e
 			}
@@ -73,11 +73,11 @@ func (c *PersistentVolumeClaimConfig) ToConfig(filter processor.MetadataFilter) 
 		out.TimeoutSecondsMap = map[arv1b1.OperationType]int32{}
 	}
 	for opType, ps := range c.ProcessorsMap {
-		ps = FilterPersistentVolumeClaimProcessors(ps, filter)
+		ps = FilterDaemonSetProcessors(ps, filter)
 		if len(ps) == 0 {
 			continue
 		}
-		out.ProcessorsMap[opType] = CombinePersistentVolumeClaimProcessors(ps)
+		out.ProcessorsMap[opType] = CombineDaemonSetProcessors(ps)
 	}
 	if len(out.ProcessorsMap) == 0 {
 		return nil
@@ -85,24 +85,26 @@ func (c *PersistentVolumeClaimConfig) ToConfig(filter processor.MetadataFilter) 
 	return out
 }
 
-func GetPersistentVolumeClaimFromRawExtension(raw *runtime.RawExtension) (*corev1.PersistentVolumeClaim, error) {
+func GetDaemonSetFromRawExtension(raw *runtime.RawExtension) (*appsv1.DaemonSet, error) {
 	if raw == nil {
 		return nil, fmt.Errorf("runtime.RawExtension is nil")
 	}
-	if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != persistentvolumeclaimGVK {
-		return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), persistentvolumeclaimGVK.String())
+	if !interfaces.IsNil(raw.Object) {
+		if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != daemonsetsGVK {
+			return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), daemonsetsGVK.String())
+		}
+		if obj := raw.Object.(*appsv1.DaemonSet); obj != nil {
+			return obj, nil
+		}
 	}
-	if obj := raw.Object.(*corev1.PersistentVolumeClaim); obj != nil {
-		return obj, nil
-	}
-	parsed := &corev1.PersistentVolumeClaim{}
+	parsed := &appsv1.DaemonSet{}
 	if e := json.Unmarshal(raw.Raw, parsed); e != nil {
 		return nil, e
 	}
 	return parsed, nil
 }
 
-func FilterPersistentVolumeClaimProcessors(in []PersistentVolumeClaimProcessor, filter processor.MetadataFilter) (out []PersistentVolumeClaimProcessor) {
+func FilterDaemonSetProcessors(in []DaemonSetProcessor, filter processor.MetadataFilter) (out []DaemonSetProcessor) {
 	if filter == nil {
 		return in
 	}
@@ -114,15 +116,15 @@ func FilterPersistentVolumeClaimProcessors(in []PersistentVolumeClaimProcessor, 
 	return out
 }
 
-func CombinePersistentVolumeClaimProcessors(ps []PersistentVolumeClaimProcessor) util.Review {
+func CombineDaemonSetProcessors(ps []DaemonSetProcessor) util.Review {
 	return func(ctx context.Context, in runtime.Object) (err error) {
 		// check
 		if interfaces.IsNil(in) {
 			return fmt.Errorf("nil input")
 		}
-		obj := in.(*corev1.PersistentVolumeClaim)
+		obj := in.(*appsv1.DaemonSet)
 		if obj == nil {
-			return fmt.Errorf("not corev1.PersistentVolumeClaim")
+			return fmt.Errorf("not appsv1.DaemonSet")
 		}
 		defer util.RemoveObjectAnno(obj, constants.AnnoKeyAdmissionIgnore)
 		// execute processors

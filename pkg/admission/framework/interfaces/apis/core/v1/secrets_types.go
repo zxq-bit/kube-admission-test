@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	secretGRV = corev1.SchemeGroupVersion.WithResource("secret")
-	secretGVK = corev1.SchemeGroupVersion.WithKind("Secret")
+	secretsGRV = corev1.SchemeGroupVersion.WithResource("secrets")
+	secretsGVK = corev1.SchemeGroupVersion.WithKind("Secret")
 )
 
 type SecretProcessor struct {

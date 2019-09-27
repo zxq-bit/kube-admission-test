@@ -14,11 +14,11 @@ import (
 	"github.com/caicloud/nirvana/log"
 
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
-	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func (p *StatefulSetProcessor) Validate() error {
+func (p *SecretProcessor) Validate() error {
 	if e := p.Metadata.Validate(); e != nil {
 		return e
 	}
@@ -28,18 +28,18 @@ func (p *StatefulSetProcessor) Validate() error {
 	return nil
 }
 
-func (c *StatefulSetConfig) Register(opType arv1b1.OperationType, ps ...*StatefulSetProcessor) {
+func (c *SecretConfig) Register(opType arv1b1.OperationType, ps ...*SecretProcessor) {
 	if c.ProcessorsMap == nil {
-		c.ProcessorsMap = make(map[arv1b1.OperationType][]StatefulSetProcessor, 1)
+		c.ProcessorsMap = make(map[arv1b1.OperationType][]SecretProcessor, 1)
 	}
 	if len(c.ProcessorsMap[opType]) == 0 {
-		c.ProcessorsMap[opType] = make([]StatefulSetProcessor, 0, len(ps))
+		c.ProcessorsMap[opType] = make([]SecretProcessor, 0, len(ps))
 	}
 	for i, p := range ps {
 		if p == nil {
 			continue
 		}
-		logPrefix := fmt.Sprintf("appsv1.StatefulSet[%v][%d][%s]", opType, i, p.Name)
+		logPrefix := fmt.Sprintf("corev1.Secret[%v][%d][%s]", opType, i, p.Name)
 		if e := p.Validate(); e != nil {
 			log.Errorf("%s processor register failed, %v", logPrefix, e)
 			continue
@@ -49,18 +49,18 @@ func (c *StatefulSetConfig) Register(opType arv1b1.OperationType, ps ...*Statefu
 	}
 }
 
-func (c *StatefulSetConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
+func (c *SecretConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
 	if c.TimeoutSecondsMap == nil {
 		c.TimeoutSecondsMap = make(map[arv1b1.OperationType]int32, 1)
 	}
 	c.TimeoutSecondsMap[opType] = int32(timeout / time.Second)
 }
 
-func (c *StatefulSetConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
+func (c *SecretConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
 	out = &processor.Config{
-		GroupVersionResource: statefulsetGRV,
+		GroupVersionResource: secretsGRV,
 		RawExtensionParser: func(raw *runtime.RawExtension) (runtime.Object, error) {
-			obj, e := GetStatefulSetFromRawExtension(raw)
+			obj, e := GetSecretFromRawExtension(raw)
 			if e != nil {
 				return nil, e
 			}
@@ -73,11 +73,11 @@ func (c *StatefulSetConfig) ToConfig(filter processor.MetadataFilter) (out *proc
 		out.TimeoutSecondsMap = map[arv1b1.OperationType]int32{}
 	}
 	for opType, ps := range c.ProcessorsMap {
-		ps = FilterStatefulSetProcessors(ps, filter)
+		ps = FilterSecretProcessors(ps, filter)
 		if len(ps) == 0 {
 			continue
 		}
-		out.ProcessorsMap[opType] = CombineStatefulSetProcessors(ps)
+		out.ProcessorsMap[opType] = CombineSecretProcessors(ps)
 	}
 	if len(out.ProcessorsMap) == 0 {
 		return nil
@@ -85,24 +85,26 @@ func (c *StatefulSetConfig) ToConfig(filter processor.MetadataFilter) (out *proc
 	return out
 }
 
-func GetStatefulSetFromRawExtension(raw *runtime.RawExtension) (*appsv1.StatefulSet, error) {
+func GetSecretFromRawExtension(raw *runtime.RawExtension) (*corev1.Secret, error) {
 	if raw == nil {
 		return nil, fmt.Errorf("runtime.RawExtension is nil")
 	}
-	if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != statefulsetGVK {
-		return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), statefulsetGVK.String())
+	if !interfaces.IsNil(raw.Object) {
+		if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != secretsGVK {
+			return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), secretsGVK.String())
+		}
+		if obj := raw.Object.(*corev1.Secret); obj != nil {
+			return obj, nil
+		}
 	}
-	if obj := raw.Object.(*appsv1.StatefulSet); obj != nil {
-		return obj, nil
-	}
-	parsed := &appsv1.StatefulSet{}
+	parsed := &corev1.Secret{}
 	if e := json.Unmarshal(raw.Raw, parsed); e != nil {
 		return nil, e
 	}
 	return parsed, nil
 }
 
-func FilterStatefulSetProcessors(in []StatefulSetProcessor, filter processor.MetadataFilter) (out []StatefulSetProcessor) {
+func FilterSecretProcessors(in []SecretProcessor, filter processor.MetadataFilter) (out []SecretProcessor) {
 	if filter == nil {
 		return in
 	}
@@ -114,15 +116,15 @@ func FilterStatefulSetProcessors(in []StatefulSetProcessor, filter processor.Met
 	return out
 }
 
-func CombineStatefulSetProcessors(ps []StatefulSetProcessor) util.Review {
+func CombineSecretProcessors(ps []SecretProcessor) util.Review {
 	return func(ctx context.Context, in runtime.Object) (err error) {
 		// check
 		if interfaces.IsNil(in) {
 			return fmt.Errorf("nil input")
 		}
-		obj := in.(*appsv1.StatefulSet)
+		obj := in.(*corev1.Secret)
 		if obj == nil {
-			return fmt.Errorf("not appsv1.StatefulSet")
+			return fmt.Errorf("not corev1.Secret")
 		}
 		defer util.RemoveObjectAnno(obj, constants.AnnoKeyAdmissionIgnore)
 		// execute processors

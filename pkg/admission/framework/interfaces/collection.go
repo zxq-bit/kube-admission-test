@@ -12,7 +12,7 @@ import (
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
 )
 
-func (c *ConfigCollection) GetConfigs(opt *processor.StartOptions) []processor.Config {
+func (c *ConfigCollection) GetConfigs(opt *processor.StartOptions) []*processor.Config {
 	processorFilter := opt.GetProcessorFilter()
 	raw := []*processor.Config{
 		c.DaemonSetConfig.ToConfig(processorFilter),
@@ -25,10 +25,10 @@ func (c *ConfigCollection) GetConfigs(opt *processor.StartOptions) []processor.C
 		c.PersistentVolumeConfig.ToConfig(processorFilter),
 		c.PersistentVolumeClaimConfig.ToConfig(processorFilter),
 	}
-	re := make([]processor.Config, 0, len(raw))
+	re := make([]*processor.Config, 0, len(raw))
 	for _, c := range raw {
 		if c != nil {
-			re = append(re, *c)
+			re = append(re, c)
 		}
 	}
 	return re

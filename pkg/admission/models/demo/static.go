@@ -19,7 +19,7 @@ func GetConfigMapStaticProcessor() *acorev1.ConfigMapProcessor {
 			Name:      "static",
 			ModelName: ModelName,
 			IgnoreNamespaces: []string{
-				metav1.NamespaceDefault,
+				//metav1.NamespaceDefault,
 				metav1.NamespaceSystem,
 			},
 			Type: constants.ProcessorTypeMutate,

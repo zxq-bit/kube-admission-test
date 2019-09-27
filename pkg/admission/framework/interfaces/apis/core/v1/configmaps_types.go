@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	configmapGRV = corev1.SchemeGroupVersion.WithResource("configmap")
-	configmapGVK = corev1.SchemeGroupVersion.WithKind("ConfigMap")
+	configmapsGRV = corev1.SchemeGroupVersion.WithResource("configmaps")
+	configmapsGVK = corev1.SchemeGroupVersion.WithKind("ConfigMap")
 )
 
 type ConfigMapProcessor struct {

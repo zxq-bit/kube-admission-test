@@ -18,7 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func (p *DaemonSetProcessor) Validate() error {
+func (p *StatefulSetProcessor) Validate() error {
 	if e := p.Metadata.Validate(); e != nil {
 		return e
 	}
@@ -28,18 +28,18 @@ func (p *DaemonSetProcessor) Validate() error {
 	return nil
 }
 
-func (c *DaemonSetConfig) Register(opType arv1b1.OperationType, ps ...*DaemonSetProcessor) {
+func (c *StatefulSetConfig) Register(opType arv1b1.OperationType, ps ...*StatefulSetProcessor) {
 	if c.ProcessorsMap == nil {
-		c.ProcessorsMap = make(map[arv1b1.OperationType][]DaemonSetProcessor, 1)
+		c.ProcessorsMap = make(map[arv1b1.OperationType][]StatefulSetProcessor, 1)
 	}
 	if len(c.ProcessorsMap[opType]) == 0 {
-		c.ProcessorsMap[opType] = make([]DaemonSetProcessor, 0, len(ps))
+		c.ProcessorsMap[opType] = make([]StatefulSetProcessor, 0, len(ps))
 	}
 	for i, p := range ps {
 		if p == nil {
 			continue
 		}
-		logPrefix := fmt.Sprintf("appsv1.DaemonSet[%v][%d][%s]", opType, i, p.Name)
+		logPrefix := fmt.Sprintf("appsv1.StatefulSet[%v][%d][%s]", opType, i, p.Name)
 		if e := p.Validate(); e != nil {
 			log.Errorf("%s processor register failed, %v", logPrefix, e)
 			continue
@@ -49,18 +49,18 @@ func (c *DaemonSetConfig) Register(opType arv1b1.OperationType, ps ...*DaemonSet
 	}
 }
 
-func (c *DaemonSetConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
+func (c *StatefulSetConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
 	if c.TimeoutSecondsMap == nil {
 		c.TimeoutSecondsMap = make(map[arv1b1.OperationType]int32, 1)
 	}
 	c.TimeoutSecondsMap[opType] = int32(timeout / time.Second)
 }
 
-func (c *DaemonSetConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
+func (c *StatefulSetConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
 	out = &processor.Config{
-		GroupVersionResource: daemonsetGRV,
+		GroupVersionResource: statefulsetsGRV,
 		RawExtensionParser: func(raw *runtime.RawExtension) (runtime.Object, error) {
-			obj, e := GetDaemonSetFromRawExtension(raw)
+			obj, e := GetStatefulSetFromRawExtension(raw)
 			if e != nil {
 				return nil, e
 			}
@@ -73,11 +73,11 @@ func (c *DaemonSetConfig) ToConfig(filter processor.MetadataFilter) (out *proces
 		out.TimeoutSecondsMap = map[arv1b1.OperationType]int32{}
 	}
 	for opType, ps := range c.ProcessorsMap {
-		ps = FilterDaemonSetProcessors(ps, filter)
+		ps = FilterStatefulSetProcessors(ps, filter)
 		if len(ps) == 0 {
 			continue
 		}
-		out.ProcessorsMap[opType] = CombineDaemonSetProcessors(ps)
+		out.ProcessorsMap[opType] = CombineStatefulSetProcessors(ps)
 	}
 	if len(out.ProcessorsMap) == 0 {
 		return nil
@@ -85,24 +85,26 @@ func (c *DaemonSetConfig) ToConfig(filter processor.MetadataFilter) (out *proces
 	return out
 }
 
-func GetDaemonSetFromRawExtension(raw *runtime.RawExtension) (*appsv1.DaemonSet, error) {
+func GetStatefulSetFromRawExtension(raw *runtime.RawExtension) (*appsv1.StatefulSet, error) {
 	if raw == nil {
 		return nil, fmt.Errorf("runtime.RawExtension is nil")
 	}
-	if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != daemonsetGVK {
-		return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), daemonsetGVK.String())
+	if !interfaces.IsNil(raw.Object) {
+		if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != statefulsetsGVK {
+			return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), statefulsetsGVK.String())
+		}
+		if obj := raw.Object.(*appsv1.StatefulSet); obj != nil {
+			return obj, nil
+		}
 	}
-	if obj := raw.Object.(*appsv1.DaemonSet); obj != nil {
-		return obj, nil
-	}
-	parsed := &appsv1.DaemonSet{}
+	parsed := &appsv1.StatefulSet{}
 	if e := json.Unmarshal(raw.Raw, parsed); e != nil {
 		return nil, e
 	}
 	return parsed, nil
 }
 
-func FilterDaemonSetProcessors(in []DaemonSetProcessor, filter processor.MetadataFilter) (out []DaemonSetProcessor) {
+func FilterStatefulSetProcessors(in []StatefulSetProcessor, filter processor.MetadataFilter) (out []StatefulSetProcessor) {
 	if filter == nil {
 		return in
 	}
@@ -114,15 +116,15 @@ func FilterDaemonSetProcessors(in []DaemonSetProcessor, filter processor.Metadat
 	return out
 }
 
-func CombineDaemonSetProcessors(ps []DaemonSetProcessor) util.Review {
+func CombineStatefulSetProcessors(ps []StatefulSetProcessor) util.Review {
 	return func(ctx context.Context, in runtime.Object) (err error) {
 		// check
 		if interfaces.IsNil(in) {
 			return fmt.Errorf("nil input")
 		}
-		obj := in.(*appsv1.DaemonSet)
+		obj := in.(*appsv1.StatefulSet)
 		if obj == nil {
-			return fmt.Errorf("not appsv1.DaemonSet")
+			return fmt.Errorf("not appsv1.StatefulSet")
 		}
 		defer util.RemoveObjectAnno(obj, constants.AnnoKeyAdmissionIgnore)
 		// execute processors

@@ -8,20 +8,20 @@ import (
 )
 
 var (
-	deploymentGRV = appsv1.SchemeGroupVersion.WithResource("deployment")
-	deploymentGVK = appsv1.SchemeGroupVersion.WithKind("Deployment")
+	replicasetsGRV = appsv1.SchemeGroupVersion.WithResource("replicasets")
+	replicasetsGVK = appsv1.SchemeGroupVersion.WithKind("ReplicaSet")
 )
 
-type DeploymentProcessor struct {
+type ReplicaSetProcessor struct {
 	// Metadata, set name, type and ignore settings
 	processor.Metadata
 	// Review do review, return error if should stop
-	Review func(in *appsv1.Deployment) (err error)
+	Review func(in *appsv1.ReplicaSet) (err error)
 }
 
-type DeploymentConfig struct {
+type ReplicaSetConfig struct {
 	// TimeoutSecondsMap set total execute time by second of processors
 	TimeoutSecondsMap map[arv1b1.OperationType]int32
-	// ProcessorsMap map Deployment processors by operation type
-	ProcessorsMap map[arv1b1.OperationType][]DeploymentProcessor
+	// ProcessorsMap map ReplicaSet processors by operation type
+	ProcessorsMap map[arv1b1.OperationType][]ReplicaSetProcessor
 }

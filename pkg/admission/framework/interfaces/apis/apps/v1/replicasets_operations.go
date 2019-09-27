@@ -18,7 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func (p *DeploymentProcessor) Validate() error {
+func (p *ReplicaSetProcessor) Validate() error {
 	if e := p.Metadata.Validate(); e != nil {
 		return e
 	}
@@ -28,18 +28,18 @@ func (p *DeploymentProcessor) Validate() error {
 	return nil
 }
 
-func (c *DeploymentConfig) Register(opType arv1b1.OperationType, ps ...*DeploymentProcessor) {
+func (c *ReplicaSetConfig) Register(opType arv1b1.OperationType, ps ...*ReplicaSetProcessor) {
 	if c.ProcessorsMap == nil {
-		c.ProcessorsMap = make(map[arv1b1.OperationType][]DeploymentProcessor, 1)
+		c.ProcessorsMap = make(map[arv1b1.OperationType][]ReplicaSetProcessor, 1)
 	}
 	if len(c.ProcessorsMap[opType]) == 0 {
-		c.ProcessorsMap[opType] = make([]DeploymentProcessor, 0, len(ps))
+		c.ProcessorsMap[opType] = make([]ReplicaSetProcessor, 0, len(ps))
 	}
 	for i, p := range ps {
 		if p == nil {
 			continue
 		}
-		logPrefix := fmt.Sprintf("appsv1.Deployment[%v][%d][%s]", opType, i, p.Name)
+		logPrefix := fmt.Sprintf("appsv1.ReplicaSet[%v][%d][%s]", opType, i, p.Name)
 		if e := p.Validate(); e != nil {
 			log.Errorf("%s processor register failed, %v", logPrefix, e)
 			continue
@@ -49,18 +49,18 @@ func (c *DeploymentConfig) Register(opType arv1b1.OperationType, ps ...*Deployme
 	}
 }
 
-func (c *DeploymentConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
+func (c *ReplicaSetConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
 	if c.TimeoutSecondsMap == nil {
 		c.TimeoutSecondsMap = make(map[arv1b1.OperationType]int32, 1)
 	}
 	c.TimeoutSecondsMap[opType] = int32(timeout / time.Second)
 }
 
-func (c *DeploymentConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
+func (c *ReplicaSetConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
 	out = &processor.Config{
-		GroupVersionResource: deploymentGRV,
+		GroupVersionResource: replicasetsGRV,
 		RawExtensionParser: func(raw *runtime.RawExtension) (runtime.Object, error) {
-			obj, e := GetDeploymentFromRawExtension(raw)
+			obj, e := GetReplicaSetFromRawExtension(raw)
 			if e != nil {
 				return nil, e
 			}
@@ -73,11 +73,11 @@ func (c *DeploymentConfig) ToConfig(filter processor.MetadataFilter) (out *proce
 		out.TimeoutSecondsMap = map[arv1b1.OperationType]int32{}
 	}
 	for opType, ps := range c.ProcessorsMap {
-		ps = FilterDeploymentProcessors(ps, filter)
+		ps = FilterReplicaSetProcessors(ps, filter)
 		if len(ps) == 0 {
 			continue
 		}
-		out.ProcessorsMap[opType] = CombineDeploymentProcessors(ps)
+		out.ProcessorsMap[opType] = CombineReplicaSetProcessors(ps)
 	}
 	if len(out.ProcessorsMap) == 0 {
 		return nil
@@ -85,24 +85,26 @@ func (c *DeploymentConfig) ToConfig(filter processor.MetadataFilter) (out *proce
 	return out
 }
 
-func GetDeploymentFromRawExtension(raw *runtime.RawExtension) (*appsv1.Deployment, error) {
+func GetReplicaSetFromRawExtension(raw *runtime.RawExtension) (*appsv1.ReplicaSet, error) {
 	if raw == nil {
 		return nil, fmt.Errorf("runtime.RawExtension is nil")
 	}
-	if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != deploymentGVK {
-		return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), deploymentGVK.String())
+	if !interfaces.IsNil(raw.Object) {
+		if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != replicasetsGVK {
+			return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), replicasetsGVK.String())
+		}
+		if obj := raw.Object.(*appsv1.ReplicaSet); obj != nil {
+			return obj, nil
+		}
 	}
-	if obj := raw.Object.(*appsv1.Deployment); obj != nil {
-		return obj, nil
-	}
-	parsed := &appsv1.Deployment{}
+	parsed := &appsv1.ReplicaSet{}
 	if e := json.Unmarshal(raw.Raw, parsed); e != nil {
 		return nil, e
 	}
 	return parsed, nil
 }
 
-func FilterDeploymentProcessors(in []DeploymentProcessor, filter processor.MetadataFilter) (out []DeploymentProcessor) {
+func FilterReplicaSetProcessors(in []ReplicaSetProcessor, filter processor.MetadataFilter) (out []ReplicaSetProcessor) {
 	if filter == nil {
 		return in
 	}
@@ -114,15 +116,15 @@ func FilterDeploymentProcessors(in []DeploymentProcessor, filter processor.Metad
 	return out
 }
 
-func CombineDeploymentProcessors(ps []DeploymentProcessor) util.Review {
+func CombineReplicaSetProcessors(ps []ReplicaSetProcessor) util.Review {
 	return func(ctx context.Context, in runtime.Object) (err error) {
 		// check
 		if interfaces.IsNil(in) {
 			return fmt.Errorf("nil input")
 		}
-		obj := in.(*appsv1.Deployment)
+		obj := in.(*appsv1.ReplicaSet)
 		if obj == nil {
-			return fmt.Errorf("not appsv1.Deployment")
+			return fmt.Errorf("not appsv1.ReplicaSet")
 		}
 		defer util.RemoveObjectAnno(obj, constants.AnnoKeyAdmissionIgnore)
 		// execute processors

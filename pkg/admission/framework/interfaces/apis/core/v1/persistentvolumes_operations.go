@@ -14,11 +14,11 @@ import (
 	"github.com/caicloud/nirvana/log"
 
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
-	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func (p *ReplicaSetProcessor) Validate() error {
+func (p *PersistentVolumeProcessor) Validate() error {
 	if e := p.Metadata.Validate(); e != nil {
 		return e
 	}
@@ -28,18 +28,18 @@ func (p *ReplicaSetProcessor) Validate() error {
 	return nil
 }
 
-func (c *ReplicaSetConfig) Register(opType arv1b1.OperationType, ps ...*ReplicaSetProcessor) {
+func (c *PersistentVolumeConfig) Register(opType arv1b1.OperationType, ps ...*PersistentVolumeProcessor) {
 	if c.ProcessorsMap == nil {
-		c.ProcessorsMap = make(map[arv1b1.OperationType][]ReplicaSetProcessor, 1)
+		c.ProcessorsMap = make(map[arv1b1.OperationType][]PersistentVolumeProcessor, 1)
 	}
 	if len(c.ProcessorsMap[opType]) == 0 {
-		c.ProcessorsMap[opType] = make([]ReplicaSetProcessor, 0, len(ps))
+		c.ProcessorsMap[opType] = make([]PersistentVolumeProcessor, 0, len(ps))
 	}
 	for i, p := range ps {
 		if p == nil {
 			continue
 		}
-		logPrefix := fmt.Sprintf("appsv1.ReplicaSet[%v][%d][%s]", opType, i, p.Name)
+		logPrefix := fmt.Sprintf("corev1.PersistentVolume[%v][%d][%s]", opType, i, p.Name)
 		if e := p.Validate(); e != nil {
 			log.Errorf("%s processor register failed, %v", logPrefix, e)
 			continue
@@ -49,18 +49,18 @@ func (c *ReplicaSetConfig) Register(opType arv1b1.OperationType, ps ...*ReplicaS
 	}
 }
 
-func (c *ReplicaSetConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
+func (c *PersistentVolumeConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
 	if c.TimeoutSecondsMap == nil {
 		c.TimeoutSecondsMap = make(map[arv1b1.OperationType]int32, 1)
 	}
 	c.TimeoutSecondsMap[opType] = int32(timeout / time.Second)
 }
 
-func (c *ReplicaSetConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
+func (c *PersistentVolumeConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
 	out = &processor.Config{
-		GroupVersionResource: replicasetGRV,
+		GroupVersionResource: persistentvolumesGRV,
 		RawExtensionParser: func(raw *runtime.RawExtension) (runtime.Object, error) {
-			obj, e := GetReplicaSetFromRawExtension(raw)
+			obj, e := GetPersistentVolumeFromRawExtension(raw)
 			if e != nil {
 				return nil, e
 			}
@@ -73,11 +73,11 @@ func (c *ReplicaSetConfig) ToConfig(filter processor.MetadataFilter) (out *proce
 		out.TimeoutSecondsMap = map[arv1b1.OperationType]int32{}
 	}
 	for opType, ps := range c.ProcessorsMap {
-		ps = FilterReplicaSetProcessors(ps, filter)
+		ps = FilterPersistentVolumeProcessors(ps, filter)
 		if len(ps) == 0 {
 			continue
 		}
-		out.ProcessorsMap[opType] = CombineReplicaSetProcessors(ps)
+		out.ProcessorsMap[opType] = CombinePersistentVolumeProcessors(ps)
 	}
 	if len(out.ProcessorsMap) == 0 {
 		return nil
@@ -85,24 +85,26 @@ func (c *ReplicaSetConfig) ToConfig(filter processor.MetadataFilter) (out *proce
 	return out
 }
 
-func GetReplicaSetFromRawExtension(raw *runtime.RawExtension) (*appsv1.ReplicaSet, error) {
+func GetPersistentVolumeFromRawExtension(raw *runtime.RawExtension) (*corev1.PersistentVolume, error) {
 	if raw == nil {
 		return nil, fmt.Errorf("runtime.RawExtension is nil")
 	}
-	if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != replicasetGVK {
-		return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), replicasetGVK.String())
+	if !interfaces.IsNil(raw.Object) {
+		if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != persistentvolumesGVK {
+			return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), persistentvolumesGVK.String())
+		}
+		if obj := raw.Object.(*corev1.PersistentVolume); obj != nil {
+			return obj, nil
+		}
 	}
-	if obj := raw.Object.(*appsv1.ReplicaSet); obj != nil {
-		return obj, nil
-	}
-	parsed := &appsv1.ReplicaSet{}
+	parsed := &corev1.PersistentVolume{}
 	if e := json.Unmarshal(raw.Raw, parsed); e != nil {
 		return nil, e
 	}
 	return parsed, nil
 }
 
-func FilterReplicaSetProcessors(in []ReplicaSetProcessor, filter processor.MetadataFilter) (out []ReplicaSetProcessor) {
+func FilterPersistentVolumeProcessors(in []PersistentVolumeProcessor, filter processor.MetadataFilter) (out []PersistentVolumeProcessor) {
 	if filter == nil {
 		return in
 	}
@@ -114,15 +116,15 @@ func FilterReplicaSetProcessors(in []ReplicaSetProcessor, filter processor.Metad
 	return out
 }
 
-func CombineReplicaSetProcessors(ps []ReplicaSetProcessor) util.Review {
+func CombinePersistentVolumeProcessors(ps []PersistentVolumeProcessor) util.Review {
 	return func(ctx context.Context, in runtime.Object) (err error) {
 		// check
 		if interfaces.IsNil(in) {
 			return fmt.Errorf("nil input")
 		}
-		obj := in.(*appsv1.ReplicaSet)
+		obj := in.(*corev1.PersistentVolume)
 		if obj == nil {
-			return fmt.Errorf("not appsv1.ReplicaSet")
+			return fmt.Errorf("not corev1.PersistentVolume")
 		}
 		defer util.RemoveObjectAnno(obj, constants.AnnoKeyAdmissionIgnore)
 		// execute processors

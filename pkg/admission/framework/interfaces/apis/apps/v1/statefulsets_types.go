@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	statefulsetGRV = appsv1.SchemeGroupVersion.WithResource("statefulset")
-	statefulsetGVK = appsv1.SchemeGroupVersion.WithKind("StatefulSet")
+	statefulsetsGRV = appsv1.SchemeGroupVersion.WithResource("statefulsets")
+	statefulsetsGVK = appsv1.SchemeGroupVersion.WithKind("StatefulSet")
 )
 
 type StatefulSetProcessor struct {

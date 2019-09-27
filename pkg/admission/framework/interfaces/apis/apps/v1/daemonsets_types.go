@@ -8,20 +8,20 @@ import (
 )
 
 var (
-	replicasetGRV = appsv1.SchemeGroupVersion.WithResource("replicaset")
-	replicasetGVK = appsv1.SchemeGroupVersion.WithKind("ReplicaSet")
+	daemonsetsGRV = appsv1.SchemeGroupVersion.WithResource("daemonsets")
+	daemonsetsGVK = appsv1.SchemeGroupVersion.WithKind("DaemonSet")
 )
 
-type ReplicaSetProcessor struct {
+type DaemonSetProcessor struct {
 	// Metadata, set name, type and ignore settings
 	processor.Metadata
 	// Review do review, return error if should stop
-	Review func(in *appsv1.ReplicaSet) (err error)
+	Review func(in *appsv1.DaemonSet) (err error)
 }
 
-type ReplicaSetConfig struct {
+type DaemonSetConfig struct {
 	// TimeoutSecondsMap set total execute time by second of processors
 	TimeoutSecondsMap map[arv1b1.OperationType]int32
-	// ProcessorsMap map ReplicaSet processors by operation type
-	ProcessorsMap map[arv1b1.OperationType][]ReplicaSetProcessor
+	// ProcessorsMap map DaemonSet processors by operation type
+	ProcessorsMap map[arv1b1.OperationType][]DaemonSetProcessor
 }

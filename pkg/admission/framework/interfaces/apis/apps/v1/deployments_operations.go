@@ -14,11 +14,11 @@ import (
 	"github.com/caicloud/nirvana/log"
 
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
-	corev1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func (p *SecretProcessor) Validate() error {
+func (p *DeploymentProcessor) Validate() error {
 	if e := p.Metadata.Validate(); e != nil {
 		return e
 	}
@@ -28,18 +28,18 @@ func (p *SecretProcessor) Validate() error {
 	return nil
 }
 
-func (c *SecretConfig) Register(opType arv1b1.OperationType, ps ...*SecretProcessor) {
+func (c *DeploymentConfig) Register(opType arv1b1.OperationType, ps ...*DeploymentProcessor) {
 	if c.ProcessorsMap == nil {
-		c.ProcessorsMap = make(map[arv1b1.OperationType][]SecretProcessor, 1)
+		c.ProcessorsMap = make(map[arv1b1.OperationType][]DeploymentProcessor, 1)
 	}
 	if len(c.ProcessorsMap[opType]) == 0 {
-		c.ProcessorsMap[opType] = make([]SecretProcessor, 0, len(ps))
+		c.ProcessorsMap[opType] = make([]DeploymentProcessor, 0, len(ps))
 	}
 	for i, p := range ps {
 		if p == nil {
 			continue
 		}
-		logPrefix := fmt.Sprintf("corev1.Secret[%v][%d][%s]", opType, i, p.Name)
+		logPrefix := fmt.Sprintf("appsv1.Deployment[%v][%d][%s]", opType, i, p.Name)
 		if e := p.Validate(); e != nil {
 			log.Errorf("%s processor register failed, %v", logPrefix, e)
 			continue
@@ -49,18 +49,18 @@ func (c *SecretConfig) Register(opType arv1b1.OperationType, ps ...*SecretProces
 	}
 }
 
-func (c *SecretConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
+func (c *DeploymentConfig) SetTimeout(opType arv1b1.OperationType, timeout time.Duration) {
 	if c.TimeoutSecondsMap == nil {
 		c.TimeoutSecondsMap = make(map[arv1b1.OperationType]int32, 1)
 	}
 	c.TimeoutSecondsMap[opType] = int32(timeout / time.Second)
 }
 
-func (c *SecretConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
+func (c *DeploymentConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
 	out = &processor.Config{
-		GroupVersionResource: secretGRV,
+		GroupVersionResource: deploymentsGRV,
 		RawExtensionParser: func(raw *runtime.RawExtension) (runtime.Object, error) {
-			obj, e := GetSecretFromRawExtension(raw)
+			obj, e := GetDeploymentFromRawExtension(raw)
 			if e != nil {
 				return nil, e
 			}
@@ -73,11 +73,11 @@ func (c *SecretConfig) ToConfig(filter processor.MetadataFilter) (out *processor
 		out.TimeoutSecondsMap = map[arv1b1.OperationType]int32{}
 	}
 	for opType, ps := range c.ProcessorsMap {
-		ps = FilterSecretProcessors(ps, filter)
+		ps = FilterDeploymentProcessors(ps, filter)
 		if len(ps) == 0 {
 			continue
 		}
-		out.ProcessorsMap[opType] = CombineSecretProcessors(ps)
+		out.ProcessorsMap[opType] = CombineDeploymentProcessors(ps)
 	}
 	if len(out.ProcessorsMap) == 0 {
 		return nil
@@ -85,24 +85,26 @@ func (c *SecretConfig) ToConfig(filter processor.MetadataFilter) (out *processor
 	return out
 }
 
-func GetSecretFromRawExtension(raw *runtime.RawExtension) (*corev1.Secret, error) {
+func GetDeploymentFromRawExtension(raw *runtime.RawExtension) (*appsv1.Deployment, error) {
 	if raw == nil {
 		return nil, fmt.Errorf("runtime.RawExtension is nil")
 	}
-	if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != secretGVK {
-		return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), secretGVK.String())
+	if !interfaces.IsNil(raw.Object) {
+		if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != deploymentsGVK {
+			return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), deploymentsGVK.String())
+		}
+		if obj := raw.Object.(*appsv1.Deployment); obj != nil {
+			return obj, nil
+		}
 	}
-	if obj := raw.Object.(*corev1.Secret); obj != nil {
-		return obj, nil
-	}
-	parsed := &corev1.Secret{}
+	parsed := &appsv1.Deployment{}
 	if e := json.Unmarshal(raw.Raw, parsed); e != nil {
 		return nil, e
 	}
 	return parsed, nil
 }
 
-func FilterSecretProcessors(in []SecretProcessor, filter processor.MetadataFilter) (out []SecretProcessor) {
+func FilterDeploymentProcessors(in []DeploymentProcessor, filter processor.MetadataFilter) (out []DeploymentProcessor) {
 	if filter == nil {
 		return in
 	}
@@ -114,15 +116,15 @@ func FilterSecretProcessors(in []SecretProcessor, filter processor.MetadataFilte
 	return out
 }
 
-func CombineSecretProcessors(ps []SecretProcessor) util.Review {
+func CombineDeploymentProcessors(ps []DeploymentProcessor) util.Review {
 	return func(ctx context.Context, in runtime.Object) (err error) {
 		// check
 		if interfaces.IsNil(in) {
 			return fmt.Errorf("nil input")
 		}
-		obj := in.(*corev1.Secret)
+		obj := in.(*appsv1.Deployment)
 		if obj == nil {
-			return fmt.Errorf("not corev1.Secret")
+			return fmt.Errorf("not appsv1.Deployment")
 		}
 		defer util.RemoveObjectAnno(obj, constants.AnnoKeyAdmissionIgnore)
 		// execute processors

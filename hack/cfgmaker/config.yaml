@@ -8,47 +8,53 @@
   apiversion: v1
   pkgpath: k8s.io/api/core/v1
   pkgname: corev1
-  resourcename: configmap
+  resourcename: configmaps
   kindname: ConfigMap
 - apigroup: core
   apiversion: v1
   pkgpath: k8s.io/api/core/v1
   pkgname: corev1
-  resourcename: secret
+  resourcename: secrets
   kindname: Secret
 - apigroup: core
   apiversion: v1
   pkgpath: k8s.io/api/core/v1
   pkgname: corev1
-  resourcename: persistentvolumeclaim
+  resourcename: services
+  kindname: Service
+- apigroup: core
+  apiversion: v1
+  pkgpath: k8s.io/api/core/v1
+  pkgname: corev1
+  resourcename: persistentvolumeclaims
   kindname: PersistentVolumeClaim
 - apigroup: core
   apiversion: v1
   pkgpath: k8s.io/api/core/v1
   pkgname: corev1
-  resourcename: persistentvolume
+  resourcename: persistentvolumes
   kindname: PersistentVolume
 - apigroup: apps
   apiversion: v1
   pkgpath: k8s.io/api/apps/v1
   pkgname: appsv1
-  resourcename: daemonset
+  resourcename: daemonsets
   kindname: DaemonSet
 - apigroup: apps
   apiversion: v1
   pkgpath: k8s.io/api/apps/v1
   pkgname: appsv1
-  resourcename: deployment
+  resourcename: deployments
   kindname: Deployment
 - apigroup: apps
   apiversion: v1
   pkgpath: k8s.io/api/apps/v1
   pkgname: appsv1
-  resourcename: replicaset
+  resourcename: replicasets
   kindname: ReplicaSet
 - apigroup: apps
   apiversion: v1
   pkgpath: k8s.io/api/apps/v1
   pkgname: appsv1
-  resourcename: statefulset
+  resourcename: statefulsets
   kindname: StatefulSet

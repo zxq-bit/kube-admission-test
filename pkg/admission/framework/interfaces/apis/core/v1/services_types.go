@@ -8,20 +8,20 @@ import (
 )
 
 var (
-	persistentvolumeGRV = corev1.SchemeGroupVersion.WithResource("persistentvolume")
-	persistentvolumeGVK = corev1.SchemeGroupVersion.WithKind("PersistentVolume")
+	servicesGRV = corev1.SchemeGroupVersion.WithResource("services")
+	servicesGVK = corev1.SchemeGroupVersion.WithKind("Service")
 )
 
-type PersistentVolumeProcessor struct {
+type ServiceProcessor struct {
 	// Metadata, set name, type and ignore settings
 	processor.Metadata
 	// Review do review, return error if should stop
-	Review func(in *corev1.PersistentVolume) (err error)
+	Review func(in *corev1.Service) (err error)
 }
 
-type PersistentVolumeConfig struct {
+type ServiceConfig struct {
 	// TimeoutSecondsMap set total execute time by second of processors
 	TimeoutSecondsMap map[arv1b1.OperationType]int32
-	// ProcessorsMap map PersistentVolume processors by operation type
-	ProcessorsMap map[arv1b1.OperationType][]PersistentVolumeProcessor
+	// ProcessorsMap map Service processors by operation type
+	ProcessorsMap map[arv1b1.OperationType][]ServiceProcessor
 }

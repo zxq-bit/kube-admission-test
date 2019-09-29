@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/errors"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/processor"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
 
@@ -28,12 +29,18 @@ func (p *ConfigMapProcessor) Validate() error {
 	return nil
 }
 
+func (p *ConfigMapProcessor) DoWithTracing(in *corev1.ConfigMap) (cost time.Duration, err error) {
+	return p.Tracer.DoWithTracing(func() error {
+		return p.Review(in)
+	})
+}
+
 func (c *ConfigMapConfig) Register(opType arv1b1.OperationType, ps ...*ConfigMapProcessor) {
 	if c.ProcessorsMap == nil {
-		c.ProcessorsMap = make(map[arv1b1.OperationType][]ConfigMapProcessor, 1)
+		c.ProcessorsMap = make(map[arv1b1.OperationType][]*ConfigMapProcessor, 1)
 	}
 	if len(c.ProcessorsMap[opType]) == 0 {
-		c.ProcessorsMap[opType] = make([]ConfigMapProcessor, 0, len(ps))
+		c.ProcessorsMap[opType] = make([]*ConfigMapProcessor, 0, len(ps))
 	}
 	for i, p := range ps {
 		if p == nil {
@@ -44,7 +51,7 @@ func (c *ConfigMapConfig) Register(opType arv1b1.OperationType, ps ...*ConfigMap
 			log.Errorf("%s processor register failed, %v", logPrefix, e)
 			continue
 		}
-		c.ProcessorsMap[opType] = append(c.ProcessorsMap[opType], *p)
+		c.ProcessorsMap[opType] = append(c.ProcessorsMap[opType], p)
 		log.Infof("%s processor register done", logPrefix)
 	}
 }
@@ -58,7 +65,7 @@ func (c *ConfigMapConfig) SetTimeout(opType arv1b1.OperationType, timeout time.D
 
 func (c *ConfigMapConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
 	out = &processor.Config{
-		GroupVersionResource: configmapsGRV,
+		GroupVersionResource: configmapsGVR,
 		RawExtensionParser: func(raw *runtime.RawExtension) (runtime.Object, error) {
 			obj, e := GetConfigMapFromRawExtension(raw)
 			if e != nil {
@@ -104,19 +111,19 @@ func GetConfigMapFromRawExtension(raw *runtime.RawExtension) (*corev1.ConfigMap,
 	return parsed, nil
 }
 
-func FilterConfigMapProcessors(in []ConfigMapProcessor, filter processor.MetadataFilter) (out []ConfigMapProcessor) {
+func FilterConfigMapProcessors(in []*ConfigMapProcessor, filter processor.MetadataFilter) (out []*ConfigMapProcessor) {
 	if filter == nil {
 		return in
 	}
 	for _, p := range in {
-		if filter(&p.Metadata) {
+		if p != nil && filter(&p.Metadata) {
 			out = append(out, p)
 		}
 	}
 	return out
 }
 
-func CombineConfigMapProcessors(ps []ConfigMapProcessor) util.Review {
+func CombineConfigMapProcessors(ps []*ConfigMapProcessor) util.Review {
 	return func(ctx context.Context, in runtime.Object) (err error) {
 		// check
 		if interfaces.IsNil(in) {
@@ -127,31 +134,41 @@ func CombineConfigMapProcessors(ps []ConfigMapProcessor) util.Review {
 			return fmt.Errorf("not corev1.ConfigMap")
 		}
 		defer util.RemoveObjectAnno(obj, constants.AnnoKeyAdmissionIgnore)
+		// log prepare
+		logBase := util.GetContextLogBase(ctx)
+		if logBase == "" {
+			logBase = fmt.Sprintf("[%v/%v/%v]", configmapsGVR.Group, configmapsGVR.Version, configmapsGVR.Resource)
+		}
 		// execute processors
-		for _, p := range ps {
+		for i, p := range ps {
 			// check ignore
 			if ignoreReason := p.Metadata.GetObjectFilter()(obj); ignoreReason != nil {
 				log.Infof("%s skip for %s", p.Name, *ignoreReason)
 				continue
 			}
 			// do review
+			var (
+				logPrefix = logBase + fmt.Sprintf("[%d][%s]", i, p.Name)
+				cost      time.Duration
+			)
 			select {
 			case <-ctx.Done():
-				err = fmt.Errorf("processor chain not finished correctly, context ended")
+				err = errors.ErrContextEnded
 			default:
 				switch p.Type {
 				case constants.ProcessorTypeValidate:
-					err = p.Review(obj.DeepCopy())
+					cost, err = p.DoWithTracing(obj.DeepCopy())
 				case constants.ProcessorTypeMutate:
-					err = p.Review(obj)
+					cost, err = p.DoWithTracing(obj)
 				default:
 					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
 				}
 			}
 			if err != nil {
-				log.Errorf("%s skip for unknown processor type '%v'", p.Type)
+				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, err)
 				break
 			}
+			log.Infof("%s[cost:%v] done", logPrefix, cost)
 		}
 		return
 	}

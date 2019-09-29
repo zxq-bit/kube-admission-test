@@ -2,6 +2,7 @@ package logger
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/caicloud/nirvana/definition"
@@ -9,13 +10,13 @@ import (
 )
 
 var (
-	green   = "\x1b[42m"
-	white   = "\x1b[47m"
-	yellow  = "\x1b[43m"
-	red     = "\x1b[41m"
-	blue    = "\x1b[44m"
-	magenta = "\x1b[45m"
-	cyan    = "\x1b[46m"
+	green   = "\x1b[1;32m"
+	white   = "\x1b[1;37m"
+	yellow  = "\x1b[1;33m"
+	red     = "\x1b[1;31m"
+	blue    = "\x1b[1;34m"
+	magenta = "\x1b[1;35m"
+	cyan    = "\x1b[1;36m"
 	reset   = "\x1b[0m"
 )
 
@@ -48,17 +49,29 @@ func New(log Logger) func(context.Context, definition.Chain) error {
 		if err != nil {
 			comment = err.Error()
 		}
-		log.Infof("%s %3d %s %13v | %15s | %s %-7s %s %s\n%s",
-			colorForStatus(statusCode), statusCode, reset,
+		log.Infof("%s %13v | %15s | %s %s\n%s",
+			httpStatusWithColor(statusCode),
 			latency,
 			clientIP,
-			colorForMethod(method), method, reset,
+			methodWithColor(method),
 			path,
 			comment,
 		)
 
 		return err
 	}
+}
+
+func methodWithColor(method string) string {
+	return render(colorForMethod(method), method)
+}
+
+func httpStatusWithColor(status int) string {
+	return render(colorForStatus(status), strconv.Itoa(status))
+}
+
+func render(color, msg string) string {
+	return color + msg + reset
 }
 
 func colorForMethod(method string) string {

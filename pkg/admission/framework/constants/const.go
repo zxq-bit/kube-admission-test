@@ -49,3 +49,7 @@ const (
 	ProcessorTypeValidate ProcessorType = "Validate"
 	ProcessorTypeMutate   ProcessorType = "Mutate"
 )
+
+const (
+	ContextKeyLogBase = "logBase"
+)

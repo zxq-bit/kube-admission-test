@@ -8,13 +8,15 @@ import (
 )
 
 var (
-	persistentvolumesGRV = corev1.SchemeGroupVersion.WithResource("persistentvolumes")
+	persistentvolumesGVR = corev1.SchemeGroupVersion.WithResource("persistentvolumes")
 	persistentvolumesGVK = corev1.SchemeGroupVersion.WithKind("PersistentVolume")
 )
 
 type PersistentVolumeProcessor struct {
 	// Metadata, set name, type and ignore settings
 	processor.Metadata
+	// Tracer, do performance tracking
+	processor.Tracer
 	// Review do review, return error if should stop
 	Review func(in *corev1.PersistentVolume) (err error)
 }
@@ -23,5 +25,5 @@ type PersistentVolumeConfig struct {
 	// TimeoutSecondsMap set total execute time by second of processors
 	TimeoutSecondsMap map[arv1b1.OperationType]int32
 	// ProcessorsMap map PersistentVolume processors by operation type
-	ProcessorsMap map[arv1b1.OperationType][]PersistentVolumeProcessor
+	ProcessorsMap map[arv1b1.OperationType][]*PersistentVolumeProcessor
 }

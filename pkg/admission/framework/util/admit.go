@@ -1,7 +1,6 @@
 package util
 
 import (
-	"context"
 	"encoding/json"
 
 	"github.com/mattbaird/jsonpatch"
@@ -12,9 +11,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
-
-type Review func(ctx context.Context, in runtime.Object) (err error)
-type AdmissionNirvanaFunc func(ctx context.Context, req *admissionv1b1.AdmissionReview) (resp *admissionv1b1.AdmissionReview)
 
 func ToAdmissionFailedResponse(uid types.UID, err error) *admissionv1b1.AdmissionResponse {
 	switch e := err.(type) {

@@ -14,12 +14,21 @@ import (
 )
 
 type Server struct {
+	// cmd & parse
 	cfg Config
 	cmd config.NirvanaCommand
+	// parsed
+	enableOptions   []string
+	serviceSelector map[string]string
+	caBundle        []byte
+	certFile        string
+	keyFile         string
 
+	// kube
 	kc              kubernetes.Interface
 	informerFactory informers.SharedInformerFactory
 
+	// model & processor config
 	modelCollection  interfaces.ModelCollection
 	configCollection interfaces.ConfigCollection
 
@@ -51,13 +60,13 @@ func (s *Server) init(config *nirvana.Config) error {
 	kubeConfig := s.cfg.KubeConfig
 	log.Infof("parsed config: %s", s.cfg.String())
 	// config
-	if e := s.cfg.Validate(); e != nil {
-		log.Errorf("validate config failed, %v", e)
+	if e := s.validateConfig(); e != nil {
+		log.Errorf("validateConfig failed, %v", e)
 		return e
 	}
-	log.Infof("Validate done")
+	log.Infof("validateConfig done")
 	// opt
-	opt := s.cfg.ToStartOptions()
+	opt := s.getStartOptions()
 	// kube
 	restConf, e := clientcmd.BuildConfigFromFlags(kubeHost, kubeConfig)
 	if e != nil {
@@ -86,11 +95,11 @@ func (s *Server) init(config *nirvana.Config) error {
 		return e
 	}
 	log.Infof("startModels done")
-	log.Infof("s.cfg.certFile:%s", s.cfg.certFile)
-	log.Infof("s.cfg.keyFile:%s", s.cfg.keyFile)
+	log.Infof("s.cfg.certFile:%s", s.certFile)
+	log.Infof("s.cfg.keyFile:%s", s.keyFile)
 	config.Configure(
 		nirvana.Descriptor(s.configCollection.GetDescriptors(&opt)...),
-		nirvana.TLS(s.cfg.certFile, s.cfg.keyFile),
+		nirvana.TLS(s.certFile, s.keyFile),
 	)
 	log.Infof("Configure done")
 
@@ -111,12 +120,6 @@ func (s *Server) init(config *nirvana.Config) error {
 	return nil
 }
 
-func (s *Server) postConfig(config *nirvana.Config, ns nirvana.Server, _ error) error {
-	config.Configure(
-		nirvana.TLS(s.cfg.certFile, s.cfg.keyFile),
-	)
-	return nil
-}
 func (s *Server) postServe(_ *nirvana.Config, _ nirvana.Server, _ error) error {
 	close(s.stopCh)
 	return nil

@@ -8,13 +8,15 @@ import (
 )
 
 var (
-	replicasetsGRV = appsv1.SchemeGroupVersion.WithResource("replicasets")
+	replicasetsGVR = appsv1.SchemeGroupVersion.WithResource("replicasets")
 	replicasetsGVK = appsv1.SchemeGroupVersion.WithKind("ReplicaSet")
 )
 
 type ReplicaSetProcessor struct {
 	// Metadata, set name, type and ignore settings
 	processor.Metadata
+	// Tracer, do performance tracking
+	processor.Tracer
 	// Review do review, return error if should stop
 	Review func(in *appsv1.ReplicaSet) (err error)
 }
@@ -23,5 +25,5 @@ type ReplicaSetConfig struct {
 	// TimeoutSecondsMap set total execute time by second of processors
 	TimeoutSecondsMap map[arv1b1.OperationType]int32
 	// ProcessorsMap map ReplicaSet processors by operation type
-	ProcessorsMap map[arv1b1.OperationType][]ReplicaSetProcessor
+	ProcessorsMap map[arv1b1.OperationType][]*ReplicaSetProcessor
 }

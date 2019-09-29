@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/errors"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/processor"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
 
@@ -28,12 +29,18 @@ func (p *StatefulSetProcessor) Validate() error {
 	return nil
 }
 
+func (p *StatefulSetProcessor) DoWithTracing(in *appsv1.StatefulSet) (cost time.Duration, err error) {
+	return p.Tracer.DoWithTracing(func() error {
+		return p.Review(in)
+	})
+}
+
 func (c *StatefulSetConfig) Register(opType arv1b1.OperationType, ps ...*StatefulSetProcessor) {
 	if c.ProcessorsMap == nil {
-		c.ProcessorsMap = make(map[arv1b1.OperationType][]StatefulSetProcessor, 1)
+		c.ProcessorsMap = make(map[arv1b1.OperationType][]*StatefulSetProcessor, 1)
 	}
 	if len(c.ProcessorsMap[opType]) == 0 {
-		c.ProcessorsMap[opType] = make([]StatefulSetProcessor, 0, len(ps))
+		c.ProcessorsMap[opType] = make([]*StatefulSetProcessor, 0, len(ps))
 	}
 	for i, p := range ps {
 		if p == nil {
@@ -44,7 +51,7 @@ func (c *StatefulSetConfig) Register(opType arv1b1.OperationType, ps ...*Statefu
 			log.Errorf("%s processor register failed, %v", logPrefix, e)
 			continue
 		}
-		c.ProcessorsMap[opType] = append(c.ProcessorsMap[opType], *p)
+		c.ProcessorsMap[opType] = append(c.ProcessorsMap[opType], p)
 		log.Infof("%s processor register done", logPrefix)
 	}
 }
@@ -58,7 +65,7 @@ func (c *StatefulSetConfig) SetTimeout(opType arv1b1.OperationType, timeout time
 
 func (c *StatefulSetConfig) ToConfig(filter processor.MetadataFilter) (out *processor.Config) {
 	out = &processor.Config{
-		GroupVersionResource: statefulsetsGRV,
+		GroupVersionResource: statefulsetsGVR,
 		RawExtensionParser: func(raw *runtime.RawExtension) (runtime.Object, error) {
 			obj, e := GetStatefulSetFromRawExtension(raw)
 			if e != nil {
@@ -104,19 +111,19 @@ func GetStatefulSetFromRawExtension(raw *runtime.RawExtension) (*appsv1.Stateful
 	return parsed, nil
 }
 
-func FilterStatefulSetProcessors(in []StatefulSetProcessor, filter processor.MetadataFilter) (out []StatefulSetProcessor) {
+func FilterStatefulSetProcessors(in []*StatefulSetProcessor, filter processor.MetadataFilter) (out []*StatefulSetProcessor) {
 	if filter == nil {
 		return in
 	}
 	for _, p := range in {
-		if filter(&p.Metadata) {
+		if p != nil && filter(&p.Metadata) {
 			out = append(out, p)
 		}
 	}
 	return out
 }
 
-func CombineStatefulSetProcessors(ps []StatefulSetProcessor) util.Review {
+func CombineStatefulSetProcessors(ps []*StatefulSetProcessor) util.Review {
 	return func(ctx context.Context, in runtime.Object) (err error) {
 		// check
 		if interfaces.IsNil(in) {
@@ -127,31 +134,41 @@ func CombineStatefulSetProcessors(ps []StatefulSetProcessor) util.Review {
 			return fmt.Errorf("not appsv1.StatefulSet")
 		}
 		defer util.RemoveObjectAnno(obj, constants.AnnoKeyAdmissionIgnore)
+		// log prepare
+		logBase := util.GetContextLogBase(ctx)
+		if logBase == "" {
+			logBase = fmt.Sprintf("[%v/%v/%v]", statefulsetsGVR.Group, statefulsetsGVR.Version, statefulsetsGVR.Resource)
+		}
 		// execute processors
-		for _, p := range ps {
+		for i, p := range ps {
 			// check ignore
 			if ignoreReason := p.Metadata.GetObjectFilter()(obj); ignoreReason != nil {
 				log.Infof("%s skip for %s", p.Name, *ignoreReason)
 				continue
 			}
 			// do review
+			var (
+				logPrefix = logBase + fmt.Sprintf("[%d][%s]", i, p.Name)
+				cost      time.Duration
+			)
 			select {
 			case <-ctx.Done():
-				err = fmt.Errorf("processor chain not finished correctly, context ended")
+				err = errors.ErrContextEnded
 			default:
 				switch p.Type {
 				case constants.ProcessorTypeValidate:
-					err = p.Review(obj.DeepCopy())
+					cost, err = p.DoWithTracing(obj.DeepCopy())
 				case constants.ProcessorTypeMutate:
-					err = p.Review(obj)
+					cost, err = p.DoWithTracing(obj)
 				default:
 					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
 				}
 			}
 			if err != nil {
-				log.Errorf("%s skip for unknown processor type '%v'", p.Type)
+				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, err)
 				break
 			}
+			log.Infof("%s[cost:%v] done", logPrefix, cost)
 		}
 		return
 	}

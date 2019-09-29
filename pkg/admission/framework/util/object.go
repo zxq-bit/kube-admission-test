@@ -1,7 +1,10 @@
 package util
 
 import (
+	"context"
 	"strings"
+
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 
 	"github.com/caicloud/go-common/interfaces"
 
@@ -29,4 +32,23 @@ func RemoveObjectAnno(obj metav1.Object, key string) {
 	}
 	delete(anno, key)
 	obj.SetAnnotations(anno)
+}
+
+func SetContextLogBase(ctx context.Context, logBase string) context.Context {
+	return context.WithValue(ctx, constants.ContextKeyLogBase, logBase)
+}
+
+func GetContextLogBase(ctx context.Context) string {
+	if interfaces.IsNil(ctx) {
+		return ""
+	}
+	raw := ctx.Value(constants.ContextKeyLogBase)
+	if interfaces.IsNil(raw) {
+		return ""
+	}
+	s, ok := raw.(string)
+	if !ok {
+		return ""
+	}
+	return s
 }

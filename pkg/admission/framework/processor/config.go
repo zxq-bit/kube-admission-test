@@ -34,7 +34,7 @@ type Config struct {
 	// TimeoutSecondsMap set total execute time of processors
 	TimeoutSecondsMap map[arv1b1.OperationType]int32
 	// ProcessorsMap map processors by operation type
-	ProcessorsMap map[arv1b1.OperationType]util.Review
+	ProcessorsMap map[arv1b1.OperationType]func(ctx context.Context, in runtime.Object) (err error)
 }
 
 var (
@@ -131,7 +131,7 @@ func (c *Config) ToNirvanaDescriptors(opt *StartOptions) (re []definition.Descri
 											log.Errorf("%s decode AdmissionReview failed, %v", logBase, err)
 											ar.Response = util.ToAdmissionFailedResponse("", err)
 										} else {
-											log.Infof("%s decode AdmissionReview done: %s", logBase, string(body))
+											log.DefaultLogger().Infof("%s decode AdmissionReview done: %s", logBase, string(body))
 										}
 										return &ar, nil
 									}),
@@ -142,6 +142,7 @@ func (c *Config) ToNirvanaDescriptors(opt *StartOptions) (re []definition.Descri
 						definition.DataResultFor("admission response"),
 					},
 					Function: func(ctx context.Context, ar *admissionv1b1.AdmissionReview) *admissionv1b1.AdmissionReview {
+						// check
 						if ar.Response != nil {
 							return ar
 						}
@@ -151,6 +152,7 @@ func (c *Config) ToNirvanaDescriptors(opt *StartOptions) (re []definition.Descri
 							ar.Response = util.ToAdmissionFailedResponse("", e)
 							return ar
 						}
+						// parse raw
 						logPrefix := fmt.Sprintf("%s[%s/%s]", logBase, ar.Request.Namespace, ar.Request.Name)
 						org, e := c.RawExtensionParser(&ar.Request.Object)
 						if e != nil {
@@ -158,13 +160,15 @@ func (c *Config) ToNirvanaDescriptors(opt *StartOptions) (re []definition.Descri
 							ar.Response = util.ToAdmissionFailedResponse(ar.Request.UID, e)
 							return ar
 						}
+						log.DefaultLogger().Infof("%s RawExtensionParser done", logPrefix)
+						// do review
 						obj := org.DeepCopyObject()
 						if e = f(ctx, obj); e != nil {
 							log.Errorf("%s do review failed, %v", logPrefix, e)
 							ar.Response = util.ToAdmissionFailedResponse(ar.Request.UID, e)
 							return ar
 						}
-						log.Errorf("%s do review done", logPrefix)
+						log.Infof("%s do review done", logPrefix)
 						ar.Response = util.ToAdmissionPassResponse(ar.Request.UID, org, obj)
 						return ar
 					},

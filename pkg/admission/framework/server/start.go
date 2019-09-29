@@ -11,7 +11,7 @@ import (
 
 func (s *Server) startModels() (err error) {
 	// filter
-	filter := util.MakeModelEnabledFilter(s.cfg.enableOptions)
+	filter := util.MakeModelEnabledFilter(s.enableOptions)
 	allModels := s.modelCollection.ListModels()
 	models := make([]interfaces.Model, 0, len(allModels))
 	for _, m := range allModels {

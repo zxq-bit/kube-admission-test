@@ -8,13 +8,15 @@ import (
 )
 
 var (
-	configmapsGRV = corev1.SchemeGroupVersion.WithResource("configmaps")
+	configmapsGVR = corev1.SchemeGroupVersion.WithResource("configmaps")
 	configmapsGVK = corev1.SchemeGroupVersion.WithKind("ConfigMap")
 )
 
 type ConfigMapProcessor struct {
 	// Metadata, set name, type and ignore settings
 	processor.Metadata
+	// Tracer, do performance tracking
+	processor.Tracer
 	// Review do review, return error if should stop
 	Review func(in *corev1.ConfigMap) (err error)
 }
@@ -23,5 +25,5 @@ type ConfigMapConfig struct {
 	// TimeoutSecondsMap set total execute time by second of processors
 	TimeoutSecondsMap map[arv1b1.OperationType]int32
 	// ProcessorsMap map ConfigMap processors by operation type
-	ProcessorsMap map[arv1b1.OperationType][]ConfigMapProcessor
+	ProcessorsMap map[arv1b1.OperationType][]*ConfigMapProcessor
 }

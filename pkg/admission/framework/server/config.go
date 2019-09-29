@@ -27,13 +27,6 @@ type Config struct {
 	CertTempDir      string `desc:"admission server cert file template dir path"`
 	// enable
 	Admissions string `desc:"a list of admissions to enable. '*' enables all on-by-default admissions"`
-
-	// private
-	enableOptions   []string
-	serviceSelector map[string]string
-	caBundle        []byte
-	certFile        string
-	keyFile         string
 }
 
 func NewDefaultConfig() *Config {
@@ -47,61 +40,61 @@ func NewDefaultConfig() *Config {
 	}
 }
 
-func (c *Config) Validate() (e error) {
-	if c.InformerFactoryResync < 0 {
-		return fmt.Errorf("informer factory resync setting %v is invalid", c.InformerFactoryResync)
-	}
-	if c.ServiceNamespace == "" {
-		return fmt.Errorf("service namespace setting is empty")
-	}
-	if c.ServiceName == "" {
-		return fmt.Errorf("service name setting is empty")
-	}
-	if c.CertTempDir == "" {
-		return fmt.Errorf("cert temp dir setting is empty")
-	}
-	if c.enableOptions, e = c.parsedEnableOptions(); e != nil {
-		return e
-	}
-	if c.serviceSelector, e = c.parsedServiceSelector(); e != nil {
-		return e
-	}
-	if e = c.ensureCert(); e != nil {
-		return e
-	}
-	return nil
-}
-
 func (c *Config) String() string {
 	b, _ := json.MarshalIndent(c, "", "  ")
 	return string(b)
 }
 
-func (c *Config) ToStartOptions() processor.StartOptions {
+func (s *Server) validateConfig() (e error) {
+	if s.cfg.InformerFactoryResync < 0 {
+		return fmt.Errorf("informer factory resync setting %v is invalid", s.cfg.InformerFactoryResync)
+	}
+	if s.cfg.ServiceNamespace == "" {
+		return fmt.Errorf("service namespace setting is empty")
+	}
+	if s.cfg.ServiceName == "" {
+		return fmt.Errorf("service name setting is empty")
+	}
+	if s.cfg.CertTempDir == "" {
+		return fmt.Errorf("cert temp dir setting is empty")
+	}
+	if s.enableOptions, e = s.parsedEnableOptions(); e != nil {
+		return e
+	}
+	if s.serviceSelector, e = s.parsedServiceSelector(); e != nil {
+		return e
+	}
+	if e = s.ensureCert(); e != nil {
+		return e
+	}
+	return nil
+}
+
+func (s *Server) getStartOptions() processor.StartOptions {
 	opt := processor.StartOptions{
-		EnableOptions:    c.enableOptions,
-		ServiceNamespace: c.ServiceNamespace,
-		ServiceName:      c.ServiceName,
-		ServiceCABundle:  c.caBundle,
+		EnableOptions:    s.enableOptions,
+		ServiceNamespace: s.cfg.ServiceNamespace,
+		ServiceName:      s.cfg.ServiceName,
+		ServiceCABundle:  s.caBundle,
 		APIRootPath:      constants.DefaultAPIRootPath,
 	}
 	if len(opt.EnableOptions) == 0 {
-		opt.EnableOptions, _ = c.parsedEnableOptions()
+		opt.EnableOptions, _ = s.parsedEnableOptions()
 	}
 	return opt
 }
 
-func (c *Config) ensureCert() error {
-	certData, keyData, err := cert.GenSelfSignedCertForK8sService(c.ServiceNamespace, c.ServiceName)
+func (s *Server) ensureCert() error {
+	certData, keyData, err := cert.GenSelfSignedCertForK8sService(s.cfg.ServiceNamespace, s.cfg.ServiceName)
 	if err != nil {
 		return err
 	}
-	c.caBundle = certData
-	c.certFile = filepath.Join(c.CertTempDir, constants.DefaultCertFileName)
-	c.keyFile = filepath.Join(c.CertTempDir, constants.DefaultKeyFileName)
+	s.caBundle = certData
+	s.certFile = filepath.Join(s.cfg.CertTempDir, constants.DefaultCertFileName)
+	s.keyFile = filepath.Join(s.cfg.CertTempDir, constants.DefaultKeyFileName)
 	dataPath := map[string][]byte{
-		c.certFile: certData,
-		c.keyFile:  keyData,
+		s.certFile: certData,
+		s.keyFile:  keyData,
 	}
 	for fp, data := range dataPath {
 		if err = ioutil.WriteFile(fp, data, 0664); err != nil {
@@ -111,18 +104,18 @@ func (c *Config) ensureCert() error {
 	return nil
 }
 
-func (c *Config) parsedEnableOptions() ([]string, error) {
-	if c.Admissions == "" {
+func (s *Server) parsedEnableOptions() ([]string, error) {
+	if s.cfg.Admissions == "" {
 		return nil, fmt.Errorf("admissions setting is empty")
 	}
-	return strings.Split(c.Admissions, constants.AdmissionSplitKey), nil
+	return strings.Split(s.cfg.Admissions, constants.AdmissionSplitKey), nil
 }
 
-func (c *Config) parsedServiceSelector() (map[string]string, error) {
-	if c.ServiceSelector == "" {
+func (s *Server) parsedServiceSelector() (map[string]string, error) {
+	if s.cfg.ServiceSelector == "" {
 		return nil, fmt.Errorf("service selector is empty")
 	}
-	kvs := strings.Split(c.ServiceSelector, constants.SelectorSplitKey)
+	kvs := strings.Split(s.cfg.ServiceSelector, constants.SelectorSplitKey)
 	re := make(map[string]string, len(kvs))
 	for i, s := range kvs {
 		kv := strings.Split(s, constants.SelectorKVSplitKey)

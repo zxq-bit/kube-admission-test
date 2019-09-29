@@ -53,7 +53,7 @@ func (s *Server) ensureService(port int) error {
 			Name:      s.cfg.ServiceName,
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: s.cfg.serviceSelector,
+			Selector: s.serviceSelector,
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "https",

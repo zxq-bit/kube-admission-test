@@ -8,13 +8,15 @@ import (
 )
 
 var (
-	servicesGRV = corev1.SchemeGroupVersion.WithResource("services")
+	servicesGVR = corev1.SchemeGroupVersion.WithResource("services")
 	servicesGVK = corev1.SchemeGroupVersion.WithKind("Service")
 )
 
 type ServiceProcessor struct {
 	// Metadata, set name, type and ignore settings
 	processor.Metadata
+	// Tracer, do performance tracking
+	processor.Tracer
 	// Review do review, return error if should stop
 	Review func(in *corev1.Service) (err error)
 }
@@ -23,5 +25,5 @@ type ServiceConfig struct {
 	// TimeoutSecondsMap set total execute time by second of processors
 	TimeoutSecondsMap map[arv1b1.OperationType]int32
 	// ProcessorsMap map Service processors by operation type
-	ProcessorsMap map[arv1b1.OperationType][]ServiceProcessor
+	ProcessorsMap map[arv1b1.OperationType][]*ServiceProcessor
 }

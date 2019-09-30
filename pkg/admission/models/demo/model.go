@@ -3,11 +3,11 @@ package demo
 import (
 	"fmt"
 
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/model"
+
 	"github.com/caicloud/clientset/informers"
 	"github.com/caicloud/clientset/kubernetes"
 	"github.com/caicloud/go-common/interfaces"
-
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/model"
 )
 
 type Model struct {
@@ -16,6 +16,14 @@ type Model struct {
 
 	pMap map[string]interface{}
 }
+
+const (
+	ModelName = "demo"
+
+	ProcessorNameCmExample     = "ConfigMapExample"
+	ProcessorNamePodExample    = "PodExample"
+	ProcessorNamePodGPUVisible = "PodGPUVisible"
+)
 
 func NewModel(kc kubernetes.Interface, f informers.SharedInformerFactory) (model.Model, error) {
 	if interfaces.IsNil(kc) {

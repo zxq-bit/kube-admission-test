@@ -7,10 +7,8 @@ import (
 var (
 	ErrContextEnded          = fmt.Errorf("context ended")
 	ErrProcessorIsNil        = fmt.Errorf("processor is nil")
-	ErrEmptyGVR              = fmt.Errorf("empty GroupVersionResource")
-	ErrNoHandlerMakerGVR     = fmt.Errorf("handler maker for this GroupVersionResource not registered")
-	ErrBadOperationType      = fmt.Errorf("bad operation type, not in list")
-	ErrBadTimeoutSecond      = fmt.Errorf("timeout second should be 0 or positive integer")
+	ErrEmptyGVR              = fmt.Errorf("groupVersionResource is empty")
+	ErrBadTimeoutSecond      = fmt.Errorf("timeout second must between 0 and 30 seconds")
 	ErrNilRawExtensionParser = fmt.Errorf("RawExtensionParser is nil")
 	ErrNilReviewer           = fmt.Errorf("reviewer is nil")
 	ErrNilRuntimeObject      = fmt.Errorf("runtime.Object is nil")

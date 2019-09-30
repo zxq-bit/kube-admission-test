@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/caicloud/go-common/cert"
-
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/server/initialize"
+
+	"github.com/caicloud/go-common/cert"
 )
 
 func (s *Server) validateConfig() (e error) {

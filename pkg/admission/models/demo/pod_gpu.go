@@ -12,6 +12,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	envKeyNvidiaVisibleDevices = "NVIDIA_VISIBLE_DEVICES"
+	resourceKeyNvGPU           = "nvidia.com/gpu"
+	resourceKeyPrefixER        = "extendedresource.caicloud.io/"
+	resourceKeyPrefixERReq     = "requests.extendedresource.caicloud.io/"
+)
+
 var (
 	podProcessorGPUVisible = &rcorev1.PodProcessor{
 		Metadata: processor.Metadata{

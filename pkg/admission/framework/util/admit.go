@@ -3,6 +3,8 @@ package util
 import (
 	"encoding/json"
 
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
+
 	"github.com/mattbaird/jsonpatch"
 	admissionv1b1 "k8s.io/api/admission/v1beta1"
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
@@ -10,8 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 )
 
 func IsOperationTypeLeague(opType arv1b1.OperationType) bool {

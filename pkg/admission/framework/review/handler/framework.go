@@ -50,7 +50,7 @@ func NewFramework(gvr schema.GroupVersionResource, opType arv1b1.OperationType,
 		return nil, errors.ErrEmptyGVR
 	}
 	if !util.IsOperationTypeLeague(opType) {
-		return nil, errors.ErrBadOperationType
+		return nil, fmt.Errorf("bad operation type %v", opType)
 	}
 	if parser == nil {
 		return nil, errors.ErrNilRawExtensionParser

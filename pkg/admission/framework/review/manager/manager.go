@@ -1,14 +1,17 @@
 package manager
 
 import (
-	"github.com/caicloud/nirvana/definition"
-	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	"fmt"
 
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/errors"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
+
+	"github.com/caicloud/nirvana/definition"
+
+	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type Manager struct {
@@ -30,7 +33,7 @@ func (m *Manager) GetHandler(gvr schema.GroupVersionResource, opType arv1b1.Oper
 	// get maker
 	maker := review.GetHandlerMaker(gvr)
 	if maker == nil {
-		return nil, errors.ErrNoHandlerMakerGVR
+		return nil, fmt.Errorf("no review handler maker for %v", gvr.String())
 	}
 	// make handler
 	h, e := maker(opType)

@@ -3,10 +3,10 @@ package processor
 import (
 	"fmt"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ignore filter about

@@ -4,13 +4,24 @@ import (
 	"encoding/json"
 
 	"github.com/mattbaird/jsonpatch"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-
 	admissionv1b1 "k8s.io/api/admission/v1beta1"
+	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 )
+
+func IsOperationTypeLeague(opType arv1b1.OperationType) bool {
+	for i := range constants.OperationTypes {
+		if opType == constants.OperationTypes[i] {
+			return true
+		}
+	}
+	return false
+}
 
 func ToAdmissionFailedResponse(uid types.UID, err error) *admissionv1b1.AdmissionResponse {
 	switch e := err.(type) {

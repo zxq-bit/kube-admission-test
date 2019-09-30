@@ -1,28 +1,27 @@
 package constants
 
 import (
-	"time"
-
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	DefaultListenPort            = 6666
-	DefaultCertTempDir           = "/tmp"
-	DefaultCertFileName          = "admission.cert"
-	DefaultKeyFileName           = "admission.key"
-	AdmissionsAll                = "*"
-	DefaultServiceNamespace      = metav1.NamespaceSystem
-	DefaultServiceName           = "admission-server-collection"
-	DefaultServiceSelector       = "zxq-app:admission-test,selector-test:test"
-	DefaultInformerFactoryResync = 60 * time.Second
+	DefaultListenPort                  = 6666
+	DefaultCertTempDir                 = "/tmp"
+	DefaultCertFileName                = "admission.cert"
+	DefaultKeyFileName                 = "admission.key"
+	AdmissionsAll                      = "*"
+	DefaultServiceNamespace            = metav1.NamespaceSystem
+	DefaultServiceName                 = "admission-server-collection"
+	DefaultServiceSelector             = "zxq-app:admission-test,selector-test:test"
+	DefaultInformerFactoryResyncSecond = 60
+	DefaultReviewConfigFilePath        = "/caicloud/compass/admission/review.yaml"
 
 	SelectorSplitKey   = ","
 	SelectorKVSplitKey = ":"
 	AdmissionSplitKey  = ","
 
-	DefaultAPIRootPath = "/apis/v1alpha1"
+	APIRootPath = "/apis/v1alpha1"
 )
 
 const (
@@ -50,6 +49,9 @@ const (
 	ProcessorTypeMutate   ProcessorType = "Mutate"
 )
 
+type ContextKey string
+
 const (
-	ContextKeyLogBase = "logBase"
+	ContextKeyLogBase ContextKey = "logBase"
+	ContextKeyOpType  ContextKey = "opType"
 )

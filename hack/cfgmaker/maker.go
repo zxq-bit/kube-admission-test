@@ -55,7 +55,12 @@ func (c *Config) OutputDir() string {
 	return filepath.Join(c.APIGroup, c.APIVersion)
 }
 func (c *Config) OutputFileName(suffixes ...string) string {
-	vec := append([]string{c.ResourceName}, suffixes...)
+	vec := []string{c.ResourceName}
+	for _, s := range suffixes {
+		if s != "" {
+			vec = append(vec, s)
+		}
+	}
 	return fmt.Sprintf("%s.go", strings.Join(vec, "_"))
 }
 
@@ -86,17 +91,27 @@ func initTemplate() (tm map[string]*template.Template) {
 	}
 	raw := string(b)
 	texts := strings.Split(raw, splitString)
-	if len(texts) != len(names) {
-		klog.Exitf("parse template failed, split not correct")
-	}
-	tm = make(map[string]*template.Template, len(names))
-	for i, name := range names {
-		text := texts[i]
-		t, e := template.New(name).Parse(text)
+	switch len(texts) {
+	case 1:
+		tm = make(map[string]*template.Template, 1)
+		name := ""
+		t, e := template.New(name).Parse(raw)
 		if e != nil {
 			klog.Exitf("parse template %s failed, %v", name, e)
 		}
 		tm[name] = t
+	case len(names):
+		tm = make(map[string]*template.Template, len(names))
+		for i, name := range names {
+			text := texts[i]
+			t, e := template.New(name).Parse(text)
+			if e != nil {
+				klog.Exitf("parse template %s failed, %v", name, e)
+			}
+			tm[name] = t
+		}
+	default:
+		klog.Exitf("parse template failed, split not correct")
 	}
 	return
 }

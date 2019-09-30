@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 MAKER_DIR="."
-OUTPUT_DIR="../../pkg/admission/framework/interfaces/apis"
+OUTPUT_DIR="../../pkg/admission/framework/review/apis"
 
 rm -rf ${OUTPUT_DIR}
 

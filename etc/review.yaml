@@ -1,0 +1,37 @@
+reviews:
+- group: ""
+  version: v1
+  resource: pods
+  optype: CREATE
+  timeoutsecond: 30
+  processors:
+  - model: demo
+    name: PodExample
+  - model: demo
+    name: PodGPUVisible
+- group: ""
+  version: v1
+  resource: pods
+  optype: UPDATE
+  timeoutsecond: 30
+  processors:
+  - model: demo
+    name: PodExample
+  - model: demo
+    name: PodGPUVisible
+- group: ""
+  version: v1
+  resource: configmaps
+  optype: CREATE
+  timeoutsecond: 22
+  processors:
+  - model: demo
+    name: ConfigMapExample
+- group: ""
+  version: v1
+  resource: configmaps
+  optype: UPDATE
+  timeoutsecond: 3
+  processors:
+  - model: demo
+    name: ConfigMapExample

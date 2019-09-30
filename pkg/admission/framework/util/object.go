@@ -1,15 +1,21 @@
 package util
 
 import (
-	"context"
+	"path"
 	"strings"
-
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 
 	"github.com/caicloud/go-common/interfaces"
 
+	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
+func JoinWebHooksPath(rootPath string, gvk schema.GroupVersionResource,
+	opType arv1b1.OperationType) *string {
+	result := path.Join(rootPath, gvk.Group, gvk.Version, gvk.Resource, strings.ToLower(string(opType)))
+	return &result
+}
 
 func JoinObjectName(array ...string) string {
 	vec := make([]string, 0, len(array))
@@ -32,23 +38,4 @@ func RemoveObjectAnno(obj metav1.Object, key string) {
 	}
 	delete(anno, key)
 	obj.SetAnnotations(anno)
-}
-
-func SetContextLogBase(ctx context.Context, logBase string) context.Context {
-	return context.WithValue(ctx, constants.ContextKeyLogBase, logBase)
-}
-
-func GetContextLogBase(ctx context.Context) string {
-	if interfaces.IsNil(ctx) {
-		return ""
-	}
-	raw := ctx.Value(constants.ContextKeyLogBase)
-	if interfaces.IsNil(raw) {
-		return ""
-	}
-	s, ok := raw.(string)
-	if !ok {
-		return ""
-	}
-	return s
 }

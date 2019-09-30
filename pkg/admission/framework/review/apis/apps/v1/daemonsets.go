@@ -18,40 +18,40 @@ import (
 	"github.com/caicloud/nirvana/log"
 
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
-	{{.PkgName}} "{{.PkgPath}}"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 var (
-	{{.ResourceName}}GVR = {{.PkgName}}.SchemeGroupVersion.WithResource("{{.ResourceName}}")
-	{{.ResourceName}}GVK = {{.PkgName}}.SchemeGroupVersion.WithKind("{{.KindName}}")
+	daemonsetsGVR = appsv1.SchemeGroupVersion.WithResource("daemonsets")
+	daemonsetsGVK = appsv1.SchemeGroupVersion.WithKind("DaemonSet")
 )
 
-func Get{{.KindName}}GVR() schema.GroupVersionResource { return {{.ResourceName}}GVR }
-func Get{{.KindName}}GVK() schema.GroupVersionKind     { return {{.ResourceName}}GVK }
+func GetDaemonSetGVR() schema.GroupVersionResource { return daemonsetsGVR }
+func GetDaemonSetGVK() schema.GroupVersionKind     { return daemonsetsGVK }
 
 func init() {
-	review.RegisterHandler({{.ResourceName}}GVR, New{{.KindName}}Review)
+	review.RegisterHandler(daemonsetsGVR, NewDaemonSetReview)
 }
 
-type {{.KindName}}Processor struct {
+type DaemonSetProcessor struct {
 	// Metadata, set name, type and ignore settings
 	processor.Metadata
 	// Tracer, do performance tracking
 	Tracer tracer.Tracer
 	// Review do review, return error if should stop
-	Review func(ctx context.Context, in *{{.PkgName}}.{{.KindName}}) (err error)
+	Review func(ctx context.Context, in *appsv1.DaemonSet) (err error)
 }
 
-type {{.KindName}}Reviewer struct {
-	processors []*{{.KindName}}Processor
+type DaemonSetReviewer struct {
+	processors []*DaemonSetProcessor
 	objFilters []util.ObjectIgnoreFilter
 }
 
 // processor
 
-func (p *{{.KindName}}Processor) Validate() error {
+func (p *DaemonSetProcessor) Validate() error {
 	if e := p.Metadata.Validate(); e != nil {
 		return e
 	}
@@ -61,7 +61,7 @@ func (p *{{.KindName}}Processor) Validate() error {
 	return nil
 }
 
-func (p *{{.KindName}}Processor) DoWithTracing(ctx context.Context, in *{{.PkgName}}.{{.KindName}}) (cost time.Duration, err error) {
+func (p *DaemonSetProcessor) DoWithTracing(ctx context.Context, in *appsv1.DaemonSet) (cost time.Duration, err error) {
 	return p.Tracer.DoWithTracing(func() error {
 		return p.Review(ctx, in)
 	})
@@ -69,27 +69,27 @@ func (p *{{.KindName}}Processor) DoWithTracing(ctx context.Context, in *{{.PkgNa
 
 // reviewer
 
-func New{{.KindName}}Review(opType arv1b1.OperationType) (review.Handler, error) {
+func NewDaemonSetReview(opType arv1b1.OperationType) (review.Handler, error) {
 	return handler.NewFramework(
-		{{.ResourceName}}GVR,
+		daemonsetsGVR,
 		opType,
 		func(raw *runtime.RawExtension) (runtime.Object, error) {
-			return {{.ResourceName}}RawExtensionParser(raw)
+			return daemonsetsRawExtensionParser(raw)
 		},
-		&{{.KindName}}Reviewer{},
+		&DaemonSetReviewer{},
 	)
 }
 
-func (r *{{.KindName}}Reviewer) IsEmpty() bool {
+func (r *DaemonSetReviewer) IsEmpty() bool {
 	return len(r.processors) == 0
 }
 
-func (r *{{.KindName}}Reviewer) Register(in interface{}) error {
-	getProcessor := func(v interface{}) *{{.KindName}}Processor {
+func (r *DaemonSetReviewer) Register(in interface{}) error {
+	getProcessor := func(v interface{}) *DaemonSetProcessor {
 		if v == nil {
 			return nil
 		}
-		return v.(*{{.KindName}}Processor)
+		return v.(*DaemonSetProcessor)
 	}
 	p := getProcessor(in)
 	if p == nil {
@@ -103,13 +103,13 @@ func (r *{{.KindName}}Reviewer) Register(in interface{}) error {
 	return nil
 }
 
-func (r *{{.KindName}}Reviewer) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
+func (r *DaemonSetReviewer) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
 	return tracer.DoWithTracing(func() (err error) {
 		// check
 		if interfaces.IsNil(in) {
 			return errors.ErrNilRuntimeObject
 		}
-		obj := in.(*{{.PkgName}}.{{.KindName}})
+		obj := in.(*appsv1.DaemonSet)
 		if obj == nil {
 			return errors.ErrRuntimeObjectBadType
 		}
@@ -118,7 +118,7 @@ func (r *{{.KindName}}Reviewer) DoReview(ctx context.Context, tracer *tracer.Tra
 		// log prepare
 		logBase := util.GetContextLogBase(ctx)
 		if logBase == "" {
-			logBase = fmt.Sprintf("[%v/%v/%v]", {{.ResourceName}}GVR.Group, {{.ResourceName}}GVR.Version, {{.ResourceName}}GVR.Resource)
+			logBase = fmt.Sprintf("[%v/%v/%v]", daemonsetsGVR.Group, daemonsetsGVR.Version, daemonsetsGVR.Resource)
 			if opType := util.GetContextOpType(ctx); opType != "" {
 				logBase += fmt.Sprintf("[%v]", opType)
 			}
@@ -156,19 +156,19 @@ func (r *{{.KindName}}Reviewer) DoReview(ctx context.Context, tracer *tracer.Tra
 	})
 }
 
-func {{.ResourceName}}RawExtensionParser(raw *runtime.RawExtension) (*{{.PkgName}}.{{.KindName}}, error) {
+func daemonsetsRawExtensionParser(raw *runtime.RawExtension) (*appsv1.DaemonSet, error) {
 	if raw == nil {
 		return nil, fmt.Errorf("runtime.RawExtension is nil")
 	}
 	if !interfaces.IsNil(raw.Object) {
-		if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != {{.ResourceName}}GVK {
-			return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), {{.ResourceName}}GVK.String())
+		if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != daemonsetsGVK {
+			return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), daemonsetsGVK.String())
 		}
-		if obj := raw.Object.(*{{.PkgName}}.{{.KindName}}); obj != nil {
+		if obj := raw.Object.(*appsv1.DaemonSet); obj != nil {
 			return obj, nil
 		}
 	}
-	parsed := &{{.PkgName}}.{{.KindName}}{}
+	parsed := &appsv1.DaemonSet{}
 	if e := json.Unmarshal(raw.Raw, parsed); e != nil {
 		return nil, e
 	}

@@ -1,8 +1,12 @@
 package server
 
 import (
+	"time"
+
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/interfaces"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/model"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review/manager"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/server/initialize"
 
 	"github.com/caicloud/clientset/informers"
 	"github.com/caicloud/clientset/kubernetes"
@@ -15,7 +19,7 @@ import (
 
 type Server struct {
 	// cmd & parse
-	cfg Config
+	cfg initialize.Config
 	cmd config.NirvanaCommand
 	// parsed
 	enableOptions   []string
@@ -23,21 +27,22 @@ type Server struct {
 	caBundle        []byte
 	certFile        string
 	keyFile         string
+	reviewConfig    *initialize.ReviewConfig
 
 	// kube
 	kc              kubernetes.Interface
 	informerFactory informers.SharedInformerFactory
 
-	// model & processor config
-	modelCollection  interfaces.ModelCollection
-	configCollection interfaces.ConfigCollection
+	// model & review
+	modelManager  model.Manager
+	reviewManager manager.Manager
 
 	stopCh chan struct{}
 }
 
 func NewServer() (*Server, error) {
 	s := &Server{
-		cfg: *NewDefaultConfig(),
+		cfg: initialize.DefaultServerConfig(),
 		cmd: config.NewNirvanaCommand(&config.Option{
 			Port: uint16(constants.DefaultListenPort),
 		}),
@@ -65,8 +70,6 @@ func (s *Server) init(config *nirvana.Config) error {
 		return e
 	}
 	log.Infof("validateConfig done")
-	// opt
-	opt := s.getStartOptions()
 	// kube
 	restConf, e := clientcmd.BuildConfigFromFlags(kubeHost, kubeConfig)
 	if e != nil {
@@ -80,38 +83,47 @@ func (s *Server) init(config *nirvana.Config) error {
 		return e
 	}
 	log.Infof("NewForConfig done")
-	s.informerFactory = informers.NewSharedInformerFactory(s.kc, s.cfg.InformerFactoryResync)
+	s.informerFactory = informers.NewSharedInformerFactory(s.kc,
+		time.Duration(s.cfg.InformerFactoryResyncSecond)*time.Second)
 
 	// init
-	if e = s.initModelsAndProcessors(); e != nil {
-		log.Errorf("initModelsAndProcessors failed, %v", e)
+	// init selected models
+	s.ensureModelMaker()
+	if e = s.initModels(); e != nil {
+		log.Errorf("initModels failed, %v", e)
 		return e
 	}
-	log.Infof("initModelsAndProcessors done")
+	log.Infof("initModels done")
+	// init selected processors
+	if e = s.initReviews(); e != nil {
+		log.Errorf("initReviews failed, %v", e)
+		return e
+	}
+	log.Infof("initReviews done")
 
 	// start
+	// models
 	if e = s.startModels(); e != nil {
 		log.Errorf("startModels failed, %v", e)
 		return e
 	}
 	log.Infof("startModels done")
+	// nirvana
 	log.Infof("s.cfg.certFile:%s", s.certFile)
 	log.Infof("s.cfg.keyFile:%s", s.keyFile)
 	config.Configure(
-		nirvana.Descriptor(s.configCollection.GetDescriptors(&opt)...),
+		nirvana.Descriptor(s.reviewManager.GetDescriptors()...),
 		nirvana.TLS(s.certFile, s.keyFile),
 	)
 	log.Infof("Configure done")
-
 	// service
 	if e = s.ensureService(int(config.Port())); e != nil {
 		log.Errorf("ensureService failed, %v", e)
 		return e
 	}
 	log.Infof("ensureService done")
-
 	// webhooks
-	if e = s.ensureWebhooks(&opt); e != nil {
+	if e = s.ensureWebhooks(); e != nil {
 		log.Errorf("ensureWebhooks failed, %v", e)
 		return e
 	}

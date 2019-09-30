@@ -1,53 +1,20 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
-	"time"
-
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/processor"
 
 	"github.com/caicloud/go-common/cert"
+
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/server/initialize"
 )
 
-type Config struct {
-	// kube
-	KubeHost   string `desc:"kubernetes host"`
-	KubeConfig string `desc:"kubernetes config"`
-	// informer
-	InformerFactoryResync time.Duration `desc:"kubernetes informer factory resync time"`
-	// admit
-	ServiceNamespace string `desc:"admission service namespace"`
-	ServiceName      string `desc:"admission service name"`
-	ServiceSelector  string `desc:"admission service selector labels key value pairs"`
-	CertTempDir      string `desc:"admission server cert file template dir path"`
-	// enable
-	Admissions string `desc:"a list of admissions to enable. '*' enables all on-by-default admissions"`
-}
-
-func NewDefaultConfig() *Config {
-	return &Config{
-		InformerFactoryResync: constants.DefaultInformerFactoryResync,
-		ServiceNamespace:      constants.DefaultServiceNamespace,
-		ServiceName:           constants.DefaultServiceName,
-		ServiceSelector:       constants.DefaultServiceSelector,
-		CertTempDir:           constants.DefaultCertTempDir,
-		Admissions:            constants.AdmissionsAll,
-	}
-}
-
-func (c *Config) String() string {
-	b, _ := json.MarshalIndent(c, "", "  ")
-	return string(b)
-}
-
 func (s *Server) validateConfig() (e error) {
-	if s.cfg.InformerFactoryResync < 0 {
-		return fmt.Errorf("informer factory resync setting %v is invalid", s.cfg.InformerFactoryResync)
+	if s.cfg.InformerFactoryResyncSecond < 0 {
+		return fmt.Errorf("informer factory resync setting %v is invalid", s.cfg.InformerFactoryResyncSecond)
 	}
 	if s.cfg.ServiceNamespace == "" {
 		return fmt.Errorf("service namespace setting is empty")
@@ -67,21 +34,10 @@ func (s *Server) validateConfig() (e error) {
 	if e = s.ensureCert(); e != nil {
 		return e
 	}
+	if s.reviewConfig, e = initialize.ReadReviewConfigFromFile(s.cfg.ReviewConfigFile); e != nil {
+		return e
+	}
 	return nil
-}
-
-func (s *Server) getStartOptions() processor.StartOptions {
-	opt := processor.StartOptions{
-		EnableOptions:    s.enableOptions,
-		ServiceNamespace: s.cfg.ServiceNamespace,
-		ServiceName:      s.cfg.ServiceName,
-		ServiceCABundle:  s.caBundle,
-		APIRootPath:      constants.DefaultAPIRootPath,
-	}
-	if len(opt.EnableOptions) == 0 {
-		opt.EnableOptions, _ = s.parsedEnableOptions()
-	}
-	return opt
 }
 
 func (s *Server) ensureCert() error {

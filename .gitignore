@@ -7,6 +7,7 @@
 # Test binary, build with `go test -c`
 *.test
 /hack/local-test/setting.sh
+/hack/cluster-test/*
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out

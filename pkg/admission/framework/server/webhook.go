@@ -3,8 +3,6 @@ package server
 import (
 	"fmt"
 
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/processor"
-
 	"github.com/caicloud/go-common/kubernetes/errors"
 	"github.com/caicloud/nirvana/log"
 
@@ -13,8 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func (s *Server) ensureWebhooks(opt *processor.StartOptions) error {
-	webhooks := s.configCollection.GetMutatingWebHooks(opt)
+func (s *Server) ensureWebhooks() error {
+	webhooks := s.reviewManager.GetMutatingWebHooks(s.cfg.ServiceNamespace, s.cfg.ServiceName, s.caBundle)
 	for _, webhook := range webhooks {
 		logPrefix := fmt.Sprintf("ensureWebhook[name:%s]", webhook.Name)
 		prev, err := s.kc.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Get(webhook.Name, metav1.GetOptions{})

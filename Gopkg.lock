@@ -126,23 +126,22 @@
   revision = "b21562ce589e530882cb99743fb769d7c5278f02"
 
 [[projects]]
-  digest = "1:3b4ed0d47a7e7a31d5f25bd708e793571be7c59f1542745db57294cb0f226a3a"
+  branch = "release-0.2"
+  digest = "1:75e1d977bf9b1e72397648de56e3c02c11d7c06de2a47f22ad18accd6d888352"
   name = "github.com/caicloud/go-common"
   packages = [
     "cert",
     "interfaces",
     "kubernetes/errors",
-    "maps",
     "nirvana/middleware",
     "slice",
   ]
   pruneopts = "UT"
-  revision = "d8881187acbfb3d4c54de15f60c9828462e5f8d6"
-  version = "v0.2.0"
+  revision = "d7ca8332413524e75dd8653c678d2c28e1e735c3"
 
 [[projects]]
   branch = "master"
-  digest = "1:3755ab65dd383ff37916663b3a6aa1227ccb3993a2ef5e851a8df1a562971c3d"
+  digest = "1:7f3ef11f982052d2f0e3c363deeb68cc5ea5500abfd28bd243e780fbe26580e7"
   name = "github.com/caicloud/nirvana"
   packages = [
     ".",
@@ -152,7 +151,6 @@
     "log",
     "service",
     "service/router",
-    "utils/api",
     "utils/printer",
   ]
   pruneopts = "UT"
@@ -378,7 +376,7 @@
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
   pruneopts = "UT"
-  revision = "cea2066c64117dea9cba47afc7c35e4d2299107d"
+  revision = "a832865fa7ada6126f4c6124ac49f71be71bff2a"
 
 [[projects]]
   branch = "master"
@@ -415,7 +413,7 @@
     "windows",
   ]
   pruneopts = "UT"
-  revision = "855e68c8590b0d6a9d08863d2982eb8aeddd98d3"
+  revision = "c990c680b611ac1aeb7d8f2af94a825f98d69720"
 
 [[projects]]
   digest = "1:66a2f252a58b4fbbad0e4e180e1d85a83c222b6bce09c3dcdef3dc87c72eda7c"
@@ -769,14 +767,13 @@
     "github.com/caicloud/go-common/cert",
     "github.com/caicloud/go-common/interfaces",
     "github.com/caicloud/go-common/kubernetes/errors",
-    "github.com/caicloud/go-common/maps",
     "github.com/caicloud/go-common/nirvana/middleware",
     "github.com/caicloud/go-common/slice",
     "github.com/caicloud/nirvana",
     "github.com/caicloud/nirvana/config",
     "github.com/caicloud/nirvana/definition",
     "github.com/caicloud/nirvana/log",
-    "github.com/caicloud/nirvana/utils/api",
+    "github.com/caicloud/nirvana/service",
     "github.com/mattbaird/jsonpatch",
     "gopkg.in/yaml.v2",
     "k8s.io/api/admission/v1beta1",

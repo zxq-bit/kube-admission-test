@@ -20,10 +20,10 @@ func (s *Server) initModels() error {
 
 func (s *Server) initReviews() error {
 	modelFilter := util.MakeModelEnabledFilter(s.enableOptions)
-	for _, r := range s.reviewConfig.Reviews {
-		gvr := r.GroupVersionResource
-		opType := r.OpType
-		logBase := fmt.Sprintf("reviewInit[%s][%v]", path.Join(gvr.Group, gvr.Version, gvr.Resource), opType)
+	for _, h := range s.handlerConfig.Handlers {
+		gvr := h.GroupVersionResource
+		opType := h.OpType
+		logBase := fmt.Sprintf("handlerInit[%s][%v]", path.Join(gvr.Group, gvr.Version, gvr.Resource), opType)
 		// get handler
 		handler, e := s.reviewManager.GetHandler(gvr, opType)
 		if e != nil {
@@ -31,13 +31,13 @@ func (s *Server) initReviews() error {
 			return e
 		}
 		// set timeout
-		e = handler.SetTimeout(r.TimeoutSecond)
+		e = handler.SetTimeout(h.TimeoutSecond)
 		if e != nil {
 			log.Errorf("%s SetTimeout failed, %v", logBase, e)
 			return e
 		}
 		// register processors
-		for i, pMeta := range r.Processors {
+		for i, pMeta := range h.Processors {
 			logPrefix := fmt.Sprintf("%s[%d][%s/%s]", logBase, i, pMeta.Model, pMeta.Name)
 			// filter by model
 			if !modelFilter(pMeta.Model) {

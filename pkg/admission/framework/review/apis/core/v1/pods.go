@@ -32,7 +32,7 @@ func GetPodGVR() schema.GroupVersionResource { return podsGVR }
 func GetPodGVK() schema.GroupVersionKind     { return podsGVK }
 
 func init() {
-	review.RegisterHandler(podsGVR, NewPodReview)
+	review.RegisterHandlerMaker(podsGVR, NewPodHandler)
 }
 
 type PodProcessor struct {
@@ -44,7 +44,7 @@ type PodProcessor struct {
 	Review func(ctx context.Context, in *corev1.Pod) (err error)
 }
 
-type PodReviewer struct {
+type PodHandler struct {
 	processors []*PodProcessor
 	objFilters []util.ObjectIgnoreFilter
 }
@@ -69,22 +69,22 @@ func (p *PodProcessor) DoWithTracing(ctx context.Context, in *corev1.Pod) (cost 
 
 // reviewer
 
-func NewPodReview(opType arv1b1.OperationType) (review.Handler, error) {
+func NewPodHandler(opType arv1b1.OperationType) (review.Handler, error) {
 	return handler.NewFramework(
 		podsGVR,
 		opType,
 		func(raw *runtime.RawExtension) (runtime.Object, error) {
 			return podsRawExtensionParser(raw)
 		},
-		&PodReviewer{},
+		&PodHandler{},
 	)
 }
 
-func (r *PodReviewer) IsEmpty() bool {
-	return len(r.processors) == 0
+func (h *PodHandler) IsEmpty() bool {
+	return len(h.processors) == 0
 }
 
-func (r *PodReviewer) Register(in interface{}) error {
+func (h *PodHandler) Register(in interface{}) error {
 	getProcessor := func(v interface{}) *PodProcessor {
 		if v == nil {
 			return nil
@@ -98,12 +98,12 @@ func (r *PodReviewer) Register(in interface{}) error {
 	if e := p.Validate(); e != nil {
 		return e
 	}
-	r.processors = append(r.processors, p)
-	r.objFilters = append(r.objFilters, p.GetObjectFilter())
+	h.processors = append(h.processors, p)
+	h.objFilters = append(h.objFilters, p.GetObjectFilter())
 	return nil
 }
 
-func (r *PodReviewer) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
+func (h *PodHandler) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
 	return tracer.DoWithTracing(func() (err error) {
 		// check
 		if interfaces.IsNil(in) {
@@ -124,10 +124,10 @@ func (r *PodReviewer) DoReview(ctx context.Context, tracer *tracer.Tracer, in ru
 			}
 		}
 		// execute processors
-		for i, p := range r.processors {
+		for i, p := range h.processors {
 			logPrefix := logBase + fmt.Sprintf("[%d][%s]", i, p.Name)
 			// check ignore
-			if ignoreReason := r.objFilters[i](obj); ignoreReason != nil {
+			if ignoreReason := h.objFilters[i](obj); ignoreReason != nil {
 				log.Infof("%s skip for %s", logPrefix, *ignoreReason)
 				continue
 			}

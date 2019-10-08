@@ -22,7 +22,7 @@ type Processor struct {
 	Name  string
 }
 
-type Review struct {
+type Handler struct {
 	schema.GroupVersionResource `yaml:",inline" json:",inline"`
 
 	OpType        arv1b1.OperationType
@@ -30,16 +30,16 @@ type Review struct {
 	Processors    []Processor
 }
 
-type ReviewConfig struct {
-	Reviews []Review
+type HandlerConfig struct {
+	Handlers []Handler
 }
 
-func ReadReviewConfigFromFile(fp string) (*ReviewConfig, error) {
+func ReadHandlerConfigFromFile(fp string) (*HandlerConfig, error) {
 	b, e := ioutil.ReadFile(fp)
 	if e != nil {
 		return nil, e
 	}
-	re := &ReviewConfig{}
+	re := &HandlerConfig{}
 	if filepath.Ext(fp) == "json" {
 		e = json.Unmarshal(b, re)
 	} else {
@@ -55,16 +55,16 @@ func ReadReviewConfigFromFile(fp string) (*ReviewConfig, error) {
 	return re, nil
 }
 
-func (c *ReviewConfig) String() string {
+func (c *HandlerConfig) String() string {
 	b, _ := yaml.Marshal(c)
 	return string(b)
 }
 
-func (c *ReviewConfig) Validate() error {
-	if len(c.Reviews) == 0 {
+func (c *HandlerConfig) Validate() error {
+	if len(c.Handlers) == 0 {
 		return fmt.Errorf("review processors is empty")
 	}
-	for i, r := range c.Reviews {
+	for i, r := range c.Handlers {
 		if e := r.Validate(); e != nil {
 			return fmt.Errorf("review [%d][%s] validate failed, %v", i, r.String(), e)
 		}
@@ -86,24 +86,24 @@ func (p *Processor) Validate() error {
 	return nil
 }
 
-func (r *Review) String() string {
-	return strings.Join([]string{r.Group, r.Version, r.Resource, string(r.OpType)}, "/")
+func (h *Handler) String() string {
+	return strings.Join([]string{h.Group, h.Version, h.Resource, string(h.OpType)}, "/")
 }
 
-func (r *Review) Validate() error {
-	if r.GroupVersionResource.Empty() {
+func (h *Handler) Validate() error {
+	if h.GroupVersionResource.Empty() {
 		return errors.ErrEmptyGVR
 	}
-	if !util.IsOperationTypeLeague(r.OpType) {
+	if !util.IsOperationTypeLeague(h.OpType) {
 		return fmt.Errorf("review op type is illegal")
 	}
-	if r.TimeoutSecond < 0 || r.TimeoutSecond > 30 {
+	if h.TimeoutSecond < 0 || h.TimeoutSecond > 30 {
 		return errors.ErrBadTimeoutSecond
 	}
-	if len(r.Processors) == 0 {
+	if len(h.Processors) == 0 {
 		return fmt.Errorf("review processors is empty")
 	}
-	for i, p := range r.Processors {
+	for i, p := range h.Processors {
 		if e := p.Validate(); e != nil {
 			return fmt.Errorf("review processor [%d][%s] validate failed, %v", i, p.String(), e)
 		}

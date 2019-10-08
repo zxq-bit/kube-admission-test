@@ -32,7 +32,7 @@ func GetPersistentVolumeGVR() schema.GroupVersionResource { return persistentvol
 func GetPersistentVolumeGVK() schema.GroupVersionKind     { return persistentvolumesGVK }
 
 func init() {
-	review.RegisterHandler(persistentvolumesGVR, NewPersistentVolumeReview)
+	review.RegisterHandlerMaker(persistentvolumesGVR, NewPersistentVolumeHandler)
 }
 
 type PersistentVolumeProcessor struct {
@@ -44,7 +44,7 @@ type PersistentVolumeProcessor struct {
 	Review func(ctx context.Context, in *corev1.PersistentVolume) (err error)
 }
 
-type PersistentVolumeReviewer struct {
+type PersistentVolumeHandler struct {
 	processors []*PersistentVolumeProcessor
 	objFilters []util.ObjectIgnoreFilter
 }
@@ -69,22 +69,22 @@ func (p *PersistentVolumeProcessor) DoWithTracing(ctx context.Context, in *corev
 
 // reviewer
 
-func NewPersistentVolumeReview(opType arv1b1.OperationType) (review.Handler, error) {
+func NewPersistentVolumeHandler(opType arv1b1.OperationType) (review.Handler, error) {
 	return handler.NewFramework(
 		persistentvolumesGVR,
 		opType,
 		func(raw *runtime.RawExtension) (runtime.Object, error) {
 			return persistentvolumesRawExtensionParser(raw)
 		},
-		&PersistentVolumeReviewer{},
+		&PersistentVolumeHandler{},
 	)
 }
 
-func (r *PersistentVolumeReviewer) IsEmpty() bool {
-	return len(r.processors) == 0
+func (h *PersistentVolumeHandler) IsEmpty() bool {
+	return len(h.processors) == 0
 }
 
-func (r *PersistentVolumeReviewer) Register(in interface{}) error {
+func (h *PersistentVolumeHandler) Register(in interface{}) error {
 	getProcessor := func(v interface{}) *PersistentVolumeProcessor {
 		if v == nil {
 			return nil
@@ -98,12 +98,12 @@ func (r *PersistentVolumeReviewer) Register(in interface{}) error {
 	if e := p.Validate(); e != nil {
 		return e
 	}
-	r.processors = append(r.processors, p)
-	r.objFilters = append(r.objFilters, p.GetObjectFilter())
+	h.processors = append(h.processors, p)
+	h.objFilters = append(h.objFilters, p.GetObjectFilter())
 	return nil
 }
 
-func (r *PersistentVolumeReviewer) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
+func (h *PersistentVolumeHandler) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
 	return tracer.DoWithTracing(func() (err error) {
 		// check
 		if interfaces.IsNil(in) {
@@ -124,10 +124,10 @@ func (r *PersistentVolumeReviewer) DoReview(ctx context.Context, tracer *tracer.
 			}
 		}
 		// execute processors
-		for i, p := range r.processors {
+		for i, p := range h.processors {
 			logPrefix := logBase + fmt.Sprintf("[%d][%s]", i, p.Name)
 			// check ignore
-			if ignoreReason := r.objFilters[i](obj); ignoreReason != nil {
+			if ignoreReason := h.objFilters[i](obj); ignoreReason != nil {
 				log.Infof("%s skip for %s", logPrefix, *ignoreReason)
 				continue
 			}

@@ -116,7 +116,7 @@ func (r *framework) ToWebHook(svcNamespace, svcName string, svcCA []byte) arv1b1
 	}
 }
 
-func (r *framework) ToNirvanaDescriptors() definition.Descriptor {
+func (r *framework) ToNirvanaDescriptor() definition.Descriptor {
 	// timeout
 	middlewares := []definition.Middleware{
 		logger.New(log.DefaultLogger()),

@@ -9,7 +9,7 @@ type HandlerTypeMaker func(operationType arv1b1.OperationType) (Handler, error)
 
 var handlerRegister = map[schema.GroupVersionResource]HandlerTypeMaker{}
 
-func RegisterHandler(gvr schema.GroupVersionResource, f HandlerTypeMaker) {
+func RegisterHandlerMaker(gvr schema.GroupVersionResource, f HandlerTypeMaker) {
 	handlerRegister[gvr] = f
 }
 

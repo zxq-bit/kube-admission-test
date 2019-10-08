@@ -32,7 +32,7 @@ func GetServiceGVR() schema.GroupVersionResource { return servicesGVR }
 func GetServiceGVK() schema.GroupVersionKind     { return servicesGVK }
 
 func init() {
-	review.RegisterHandler(servicesGVR, NewServiceReview)
+	review.RegisterHandlerMaker(servicesGVR, NewServiceHandler)
 }
 
 type ServiceProcessor struct {
@@ -44,7 +44,7 @@ type ServiceProcessor struct {
 	Review func(ctx context.Context, in *corev1.Service) (err error)
 }
 
-type ServiceReviewer struct {
+type ServiceHandler struct {
 	processors []*ServiceProcessor
 	objFilters []util.ObjectIgnoreFilter
 }
@@ -69,22 +69,22 @@ func (p *ServiceProcessor) DoWithTracing(ctx context.Context, in *corev1.Service
 
 // reviewer
 
-func NewServiceReview(opType arv1b1.OperationType) (review.Handler, error) {
+func NewServiceHandler(opType arv1b1.OperationType) (review.Handler, error) {
 	return handler.NewFramework(
 		servicesGVR,
 		opType,
 		func(raw *runtime.RawExtension) (runtime.Object, error) {
 			return servicesRawExtensionParser(raw)
 		},
-		&ServiceReviewer{},
+		&ServiceHandler{},
 	)
 }
 
-func (r *ServiceReviewer) IsEmpty() bool {
-	return len(r.processors) == 0
+func (h *ServiceHandler) IsEmpty() bool {
+	return len(h.processors) == 0
 }
 
-func (r *ServiceReviewer) Register(in interface{}) error {
+func (h *ServiceHandler) Register(in interface{}) error {
 	getProcessor := func(v interface{}) *ServiceProcessor {
 		if v == nil {
 			return nil
@@ -98,12 +98,12 @@ func (r *ServiceReviewer) Register(in interface{}) error {
 	if e := p.Validate(); e != nil {
 		return e
 	}
-	r.processors = append(r.processors, p)
-	r.objFilters = append(r.objFilters, p.GetObjectFilter())
+	h.processors = append(h.processors, p)
+	h.objFilters = append(h.objFilters, p.GetObjectFilter())
 	return nil
 }
 
-func (r *ServiceReviewer) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
+func (h *ServiceHandler) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
 	return tracer.DoWithTracing(func() (err error) {
 		// check
 		if interfaces.IsNil(in) {
@@ -124,10 +124,10 @@ func (r *ServiceReviewer) DoReview(ctx context.Context, tracer *tracer.Tracer, i
 			}
 		}
 		// execute processors
-		for i, p := range r.processors {
+		for i, p := range h.processors {
 			logPrefix := logBase + fmt.Sprintf("[%d][%s]", i, p.Name)
 			// check ignore
-			if ignoreReason := r.objFilters[i](obj); ignoreReason != nil {
+			if ignoreReason := h.objFilters[i](obj); ignoreReason != nil {
 				log.Infof("%s skip for %s", logPrefix, *ignoreReason)
 				continue
 			}

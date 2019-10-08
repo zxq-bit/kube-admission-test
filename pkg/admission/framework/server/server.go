@@ -27,7 +27,7 @@ type Server struct {
 	caBundle        []byte
 	certFile        string
 	keyFile         string
-	reviewConfig    *initialize.ReviewConfig
+	handlerConfig   *initialize.HandlerConfig
 
 	// kube
 	kc              kubernetes.Interface

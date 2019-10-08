@@ -3,7 +3,6 @@ package manager
 import (
 	"fmt"
 
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/errors"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
 
@@ -57,7 +56,7 @@ func (m *Manager) GetDescriptors() (re []definition.Descriptor) {
 			if h == nil || h.IsEmpty() {
 				continue
 			}
-			re = append(re, h.ToNirvanaDescriptors())
+			re = append(re, h.ToNirvanaDescriptor())
 		}
 	}
 	return re

@@ -32,7 +32,7 @@ func GetStatefulSetGVR() schema.GroupVersionResource { return statefulsetsGVR }
 func GetStatefulSetGVK() schema.GroupVersionKind     { return statefulsetsGVK }
 
 func init() {
-	review.RegisterHandler(statefulsetsGVR, NewStatefulSetReview)
+	review.RegisterHandlerMaker(statefulsetsGVR, NewStatefulSetHandler)
 }
 
 type StatefulSetProcessor struct {
@@ -44,7 +44,7 @@ type StatefulSetProcessor struct {
 	Review func(ctx context.Context, in *appsv1.StatefulSet) (err error)
 }
 
-type StatefulSetReviewer struct {
+type StatefulSetHandler struct {
 	processors []*StatefulSetProcessor
 	objFilters []util.ObjectIgnoreFilter
 }
@@ -69,22 +69,22 @@ func (p *StatefulSetProcessor) DoWithTracing(ctx context.Context, in *appsv1.Sta
 
 // reviewer
 
-func NewStatefulSetReview(opType arv1b1.OperationType) (review.Handler, error) {
+func NewStatefulSetHandler(opType arv1b1.OperationType) (review.Handler, error) {
 	return handler.NewFramework(
 		statefulsetsGVR,
 		opType,
 		func(raw *runtime.RawExtension) (runtime.Object, error) {
 			return statefulsetsRawExtensionParser(raw)
 		},
-		&StatefulSetReviewer{},
+		&StatefulSetHandler{},
 	)
 }
 
-func (r *StatefulSetReviewer) IsEmpty() bool {
-	return len(r.processors) == 0
+func (h *StatefulSetHandler) IsEmpty() bool {
+	return len(h.processors) == 0
 }
 
-func (r *StatefulSetReviewer) Register(in interface{}) error {
+func (h *StatefulSetHandler) Register(in interface{}) error {
 	getProcessor := func(v interface{}) *StatefulSetProcessor {
 		if v == nil {
 			return nil
@@ -98,12 +98,12 @@ func (r *StatefulSetReviewer) Register(in interface{}) error {
 	if e := p.Validate(); e != nil {
 		return e
 	}
-	r.processors = append(r.processors, p)
-	r.objFilters = append(r.objFilters, p.GetObjectFilter())
+	h.processors = append(h.processors, p)
+	h.objFilters = append(h.objFilters, p.GetObjectFilter())
 	return nil
 }
 
-func (r *StatefulSetReviewer) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
+func (h *StatefulSetHandler) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
 	return tracer.DoWithTracing(func() (err error) {
 		// check
 		if interfaces.IsNil(in) {
@@ -124,10 +124,10 @@ func (r *StatefulSetReviewer) DoReview(ctx context.Context, tracer *tracer.Trace
 			}
 		}
 		// execute processors
-		for i, p := range r.processors {
+		for i, p := range h.processors {
 			logPrefix := logBase + fmt.Sprintf("[%d][%s]", i, p.Name)
 			// check ignore
-			if ignoreReason := r.objFilters[i](obj); ignoreReason != nil {
+			if ignoreReason := h.objFilters[i](obj); ignoreReason != nil {
 				log.Infof("%s skip for %s", logPrefix, *ignoreReason)
 				continue
 			}

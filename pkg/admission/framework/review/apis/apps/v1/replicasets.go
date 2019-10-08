@@ -32,7 +32,7 @@ func GetReplicaSetGVR() schema.GroupVersionResource { return replicasetsGVR }
 func GetReplicaSetGVK() schema.GroupVersionKind     { return replicasetsGVK }
 
 func init() {
-	review.RegisterHandler(replicasetsGVR, NewReplicaSetReview)
+	review.RegisterHandlerMaker(replicasetsGVR, NewReplicaSetHandler)
 }
 
 type ReplicaSetProcessor struct {
@@ -44,7 +44,7 @@ type ReplicaSetProcessor struct {
 	Review func(ctx context.Context, in *appsv1.ReplicaSet) (err error)
 }
 
-type ReplicaSetReviewer struct {
+type ReplicaSetHandler struct {
 	processors []*ReplicaSetProcessor
 	objFilters []util.ObjectIgnoreFilter
 }
@@ -69,22 +69,22 @@ func (p *ReplicaSetProcessor) DoWithTracing(ctx context.Context, in *appsv1.Repl
 
 // reviewer
 
-func NewReplicaSetReview(opType arv1b1.OperationType) (review.Handler, error) {
+func NewReplicaSetHandler(opType arv1b1.OperationType) (review.Handler, error) {
 	return handler.NewFramework(
 		replicasetsGVR,
 		opType,
 		func(raw *runtime.RawExtension) (runtime.Object, error) {
 			return replicasetsRawExtensionParser(raw)
 		},
-		&ReplicaSetReviewer{},
+		&ReplicaSetHandler{},
 	)
 }
 
-func (r *ReplicaSetReviewer) IsEmpty() bool {
-	return len(r.processors) == 0
+func (h *ReplicaSetHandler) IsEmpty() bool {
+	return len(h.processors) == 0
 }
 
-func (r *ReplicaSetReviewer) Register(in interface{}) error {
+func (h *ReplicaSetHandler) Register(in interface{}) error {
 	getProcessor := func(v interface{}) *ReplicaSetProcessor {
 		if v == nil {
 			return nil
@@ -98,12 +98,12 @@ func (r *ReplicaSetReviewer) Register(in interface{}) error {
 	if e := p.Validate(); e != nil {
 		return e
 	}
-	r.processors = append(r.processors, p)
-	r.objFilters = append(r.objFilters, p.GetObjectFilter())
+	h.processors = append(h.processors, p)
+	h.objFilters = append(h.objFilters, p.GetObjectFilter())
 	return nil
 }
 
-func (r *ReplicaSetReviewer) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
+func (h *ReplicaSetHandler) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
 	return tracer.DoWithTracing(func() (err error) {
 		// check
 		if interfaces.IsNil(in) {
@@ -124,10 +124,10 @@ func (r *ReplicaSetReviewer) DoReview(ctx context.Context, tracer *tracer.Tracer
 			}
 		}
 		// execute processors
-		for i, p := range r.processors {
+		for i, p := range h.processors {
 			logPrefix := logBase + fmt.Sprintf("[%d][%s]", i, p.Name)
 			// check ignore
-			if ignoreReason := r.objFilters[i](obj); ignoreReason != nil {
+			if ignoreReason := h.objFilters[i](obj); ignoreReason != nil {
 				log.Infof("%s skip for %s", logPrefix, *ignoreReason)
 				continue
 			}

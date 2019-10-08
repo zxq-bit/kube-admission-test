@@ -32,7 +32,7 @@ func GetSecretGVR() schema.GroupVersionResource { return secretsGVR }
 func GetSecretGVK() schema.GroupVersionKind     { return secretsGVK }
 
 func init() {
-	review.RegisterHandler(secretsGVR, NewSecretReview)
+	review.RegisterHandlerMaker(secretsGVR, NewSecretHandler)
 }
 
 type SecretProcessor struct {
@@ -44,7 +44,7 @@ type SecretProcessor struct {
 	Review func(ctx context.Context, in *corev1.Secret) (err error)
 }
 
-type SecretReviewer struct {
+type SecretHandler struct {
 	processors []*SecretProcessor
 	objFilters []util.ObjectIgnoreFilter
 }
@@ -69,22 +69,22 @@ func (p *SecretProcessor) DoWithTracing(ctx context.Context, in *corev1.Secret) 
 
 // reviewer
 
-func NewSecretReview(opType arv1b1.OperationType) (review.Handler, error) {
+func NewSecretHandler(opType arv1b1.OperationType) (review.Handler, error) {
 	return handler.NewFramework(
 		secretsGVR,
 		opType,
 		func(raw *runtime.RawExtension) (runtime.Object, error) {
 			return secretsRawExtensionParser(raw)
 		},
-		&SecretReviewer{},
+		&SecretHandler{},
 	)
 }
 
-func (r *SecretReviewer) IsEmpty() bool {
-	return len(r.processors) == 0
+func (h *SecretHandler) IsEmpty() bool {
+	return len(h.processors) == 0
 }
 
-func (r *SecretReviewer) Register(in interface{}) error {
+func (h *SecretHandler) Register(in interface{}) error {
 	getProcessor := func(v interface{}) *SecretProcessor {
 		if v == nil {
 			return nil
@@ -98,12 +98,12 @@ func (r *SecretReviewer) Register(in interface{}) error {
 	if e := p.Validate(); e != nil {
 		return e
 	}
-	r.processors = append(r.processors, p)
-	r.objFilters = append(r.objFilters, p.GetObjectFilter())
+	h.processors = append(h.processors, p)
+	h.objFilters = append(h.objFilters, p.GetObjectFilter())
 	return nil
 }
 
-func (r *SecretReviewer) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
+func (h *SecretHandler) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
 	return tracer.DoWithTracing(func() (err error) {
 		// check
 		if interfaces.IsNil(in) {
@@ -124,10 +124,10 @@ func (r *SecretReviewer) DoReview(ctx context.Context, tracer *tracer.Tracer, in
 			}
 		}
 		// execute processors
-		for i, p := range r.processors {
+		for i, p := range h.processors {
 			logPrefix := logBase + fmt.Sprintf("[%d][%s]", i, p.Name)
 			// check ignore
-			if ignoreReason := r.objFilters[i](obj); ignoreReason != nil {
+			if ignoreReason := h.objFilters[i](obj); ignoreReason != nil {
 				log.Infof("%s skip for %s", logPrefix, *ignoreReason)
 				continue
 			}

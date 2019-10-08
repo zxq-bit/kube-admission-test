@@ -15,7 +15,7 @@ const (
 	DefaultServiceName                 = "admission-server-collection"
 	DefaultServiceSelector             = "zxq-app:admission-test,selector-test:test"
 	DefaultInformerFactoryResyncSecond = 60
-	DefaultReviewConfigFilePath        = "/caicloud/compass/admission/review.yaml"
+	DefaultReviewConfigFilePath        = "/caicloud/compass/admission/handler.yaml"
 
 	SelectorSplitKey   = ","
 	SelectorKVSplitKey = ":"

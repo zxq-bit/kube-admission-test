@@ -34,7 +34,7 @@ func (s *Server) validateConfig() (e error) {
 	if e = s.ensureCert(); e != nil {
 		return e
 	}
-	if s.reviewConfig, e = initialize.ReadReviewConfigFromFile(s.cfg.ReviewConfigFile); e != nil {
+	if s.handlerConfig, e = initialize.ReadHandlerConfigFromFile(s.cfg.ReviewConfigFile); e != nil {
 		return e
 	}
 	return nil

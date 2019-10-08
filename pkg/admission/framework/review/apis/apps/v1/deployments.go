@@ -32,7 +32,7 @@ func GetDeploymentGVR() schema.GroupVersionResource { return deploymentsGVR }
 func GetDeploymentGVK() schema.GroupVersionKind     { return deploymentsGVK }
 
 func init() {
-	review.RegisterHandler(deploymentsGVR, NewDeploymentReview)
+	review.RegisterHandlerMaker(deploymentsGVR, NewDeploymentHandler)
 }
 
 type DeploymentProcessor struct {
@@ -44,7 +44,7 @@ type DeploymentProcessor struct {
 	Review func(ctx context.Context, in *appsv1.Deployment) (err error)
 }
 
-type DeploymentReviewer struct {
+type DeploymentHandler struct {
 	processors []*DeploymentProcessor
 	objFilters []util.ObjectIgnoreFilter
 }
@@ -69,22 +69,22 @@ func (p *DeploymentProcessor) DoWithTracing(ctx context.Context, in *appsv1.Depl
 
 // reviewer
 
-func NewDeploymentReview(opType arv1b1.OperationType) (review.Handler, error) {
+func NewDeploymentHandler(opType arv1b1.OperationType) (review.Handler, error) {
 	return handler.NewFramework(
 		deploymentsGVR,
 		opType,
 		func(raw *runtime.RawExtension) (runtime.Object, error) {
 			return deploymentsRawExtensionParser(raw)
 		},
-		&DeploymentReviewer{},
+		&DeploymentHandler{},
 	)
 }
 
-func (r *DeploymentReviewer) IsEmpty() bool {
-	return len(r.processors) == 0
+func (h *DeploymentHandler) IsEmpty() bool {
+	return len(h.processors) == 0
 }
 
-func (r *DeploymentReviewer) Register(in interface{}) error {
+func (h *DeploymentHandler) Register(in interface{}) error {
 	getProcessor := func(v interface{}) *DeploymentProcessor {
 		if v == nil {
 			return nil
@@ -98,12 +98,12 @@ func (r *DeploymentReviewer) Register(in interface{}) error {
 	if e := p.Validate(); e != nil {
 		return e
 	}
-	r.processors = append(r.processors, p)
-	r.objFilters = append(r.objFilters, p.GetObjectFilter())
+	h.processors = append(h.processors, p)
+	h.objFilters = append(h.objFilters, p.GetObjectFilter())
 	return nil
 }
 
-func (r *DeploymentReviewer) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
+func (h *DeploymentHandler) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
 	return tracer.DoWithTracing(func() (err error) {
 		// check
 		if interfaces.IsNil(in) {
@@ -124,10 +124,10 @@ func (r *DeploymentReviewer) DoReview(ctx context.Context, tracer *tracer.Tracer
 			}
 		}
 		// execute processors
-		for i, p := range r.processors {
+		for i, p := range h.processors {
 			logPrefix := logBase + fmt.Sprintf("[%d][%s]", i, p.Name)
 			// check ignore
-			if ignoreReason := r.objFilters[i](obj); ignoreReason != nil {
+			if ignoreReason := h.objFilters[i](obj); ignoreReason != nil {
 				log.Infof("%s skip for %s", logPrefix, *ignoreReason)
 				continue
 			}

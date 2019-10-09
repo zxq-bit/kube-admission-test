@@ -35,3 +35,19 @@ handlers:
   processors:
   - model: demo
     name: ConfigMapExample
+- group: apps
+  version: v1
+  resource: deployments
+  optype: CREATE
+  timeoutsecond: 22
+  processors:
+  - model: demo
+    name: DpCheckMntRef
+- group: apps
+  version: v1
+  resource: deployments
+  optype: UPDATE
+  timeoutsecond: 3
+  processors:
+  - model: demo
+    name: DpCheckMntRef

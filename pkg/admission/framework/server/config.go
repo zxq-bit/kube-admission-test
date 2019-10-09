@@ -40,6 +40,7 @@ func (s *Server) validateConfig() (e error) {
 	return nil
 }
 
+// TODO: deal with multi server, should read cert from configMap
 func (s *Server) ensureCert() error {
 	certData, keyData, err := cert.GenSelfSignedCertForK8sService(s.cfg.ServiceNamespace, s.cfg.ServiceName)
 	if err != nil {

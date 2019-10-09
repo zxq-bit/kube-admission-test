@@ -8,11 +8,16 @@ import (
 	"github.com/caicloud/clientset/informers"
 	"github.com/caicloud/clientset/kubernetes"
 	"github.com/caicloud/go-common/interfaces"
+
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
 )
 
 type Model struct {
 	kc kubernetes.Interface
 	f  informers.SharedInformerFactory
+
+	configMapLister listerscorev1.ConfigMapLister
+	secretLister    listerscorev1.SecretLister
 
 	pMap map[string]interface{}
 }
@@ -23,6 +28,7 @@ const (
 	ProcessorNameCmExample     = "ConfigMapExample"
 	ProcessorNamePodExample    = "PodExample"
 	ProcessorNamePodGPUVisible = "PodGPUVisible"
+	ProcessorNameDpCheckMntRef = "DpCheckMntRef"
 )
 
 func NewModel(kc kubernetes.Interface, f informers.SharedInformerFactory) (model.Model, error) {
@@ -35,14 +41,17 @@ func NewModel(kc kubernetes.Interface, f informers.SharedInformerFactory) (model
 	m := &Model{
 		kc: kc,
 		f:  f,
-		pMap: map[string]interface{}{
-			ProcessorNameCmExample:     cmProcessorExample,
-			ProcessorNamePodExample:    podProcessorExample,
-			ProcessorNamePodGPUVisible: podProcessorGPUVisible,
-		},
 	}
 
-	f.Apps().V1().Deployments().Informer().GetController()
+	m.configMapLister = f.Core().V1().ConfigMaps().Lister()
+	m.secretLister = f.Core().V1().Secrets().Lister()
+
+	m.pMap = map[string]interface{}{
+		ProcessorNameCmExample:     cmProcessorExample,
+		ProcessorNamePodExample:    podProcessorExample,
+		ProcessorNamePodGPUVisible: podProcessorGPUVisible,
+		ProcessorNameDpCheckMntRef: m.getDpProcessorCheckMntRef(),
+	}
 	return m, nil
 }
 

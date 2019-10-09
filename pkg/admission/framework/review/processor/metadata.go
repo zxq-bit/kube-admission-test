@@ -31,7 +31,14 @@ type Metadata struct {
 	Type constants.ProcessorType
 }
 
+func (meta *Metadata) Key() string {
+	return meta.ModelName + constants.ProcessorKeySplit + meta.Name
+}
+
 func (meta *Metadata) Validate() error {
+	if meta.ModelName == "" {
+		return fmt.Errorf("empty processor model name")
+	}
 	if meta.Name == "" {
 		return fmt.Errorf("empty processor name")
 	}
@@ -49,7 +56,7 @@ func (meta *Metadata) GetObjectFilter() util.ObjectIgnoreFilter {
 	}
 	// name
 	if meta.Name != "" {
-		filters = append(filters, util.MakeNameIgnoreObjectFilter(constants.AnnoKeyAdmissionIgnore, meta.Name))
+		filters = append(filters, util.MakeNameIgnoreObjectFilter(constants.AnnoKeyAdmissionIgnore, meta.Key()))
 	}
 	// owner // TODO
 	// return

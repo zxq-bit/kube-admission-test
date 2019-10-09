@@ -30,6 +30,8 @@ const (
 	AnnoValueFilterMatchAll = "*"
 	AnnoValueSplitKey       = ","
 	AnnoValueReversePrefix  = "-"
+
+	ProcessorKeySplit = "/"
 )
 
 var (

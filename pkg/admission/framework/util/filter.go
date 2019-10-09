@@ -81,8 +81,8 @@ func makeNamespaceIgnoreFilter(nsNames []string) NamespaceIgnoreFilter {
 // ignore filter by annotations, return true if name in object ignore option from annotations
 type NameIgnoreFilter func(objAnno map[string]string) bool
 
-// makeNameIgnoreFilter make name filter, filter out name is in annotation
-func makeNameIgnoreFilter(key, value string) NameIgnoreFilter {
+// makeNameIgnoreFilter make model/name filter, filter out name is in annotation
+func makeNameIgnoreFilter(key, pathValue string) NameIgnoreFilter {
 	return func(anno map[string]string) bool {
 		if len(anno) == 0 {
 			return false
@@ -92,7 +92,7 @@ func makeNameIgnoreFilter(key, value string) NameIgnoreFilter {
 			return false
 		}
 		values := splitAnnotationsFilterValues(valueString)
-		return simpleEnabledFilter(values, value)
+		return simpleEnabledFilter(values, pathValue)
 	}
 }
 
@@ -126,11 +126,11 @@ func MakeNamespaceIgnoreObjectFilter(nsNames []string) ObjectIgnoreFilter {
 	}
 }
 
-func MakeNameIgnoreObjectFilter(key, value string) ObjectIgnoreFilter {
-	annoFilter := makeNameIgnoreFilter(key, value)
+func MakeNameIgnoreObjectFilter(key, pathValue string) ObjectIgnoreFilter {
+	annoFilter := makeNameIgnoreFilter(key, pathValue)
 	return func(obj metav1.Object) (ignoreReason *string) {
 		if annoFilter(obj.GetAnnotations()) {
-			reason := fmt.Sprintf("object annotations's ignore settings contain kv [%s:%s]", key, value)
+			reason := fmt.Sprintf("object annotations's ignore settings contain kv [%s:%s]", key, pathValue)
 			ignoreReason = &reason
 		}
 		return

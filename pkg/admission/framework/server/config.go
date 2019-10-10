@@ -38,9 +38,6 @@ func (s *Server) validateConfig() (e error) {
 	if s.enableOptions, e = s.parsedEnableOptions(); e != nil {
 		return e
 	}
-	if e = s.ensureCert(); e != nil {
-		return e
-	}
 	if s.handlerConfig, e = initialize.ReadHandlerConfigFromFile(s.cfg.ReviewConfigFile); e != nil {
 		return e
 	}

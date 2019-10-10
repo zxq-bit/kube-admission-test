@@ -84,6 +84,12 @@ func (s *Server) init(config *nirvana.Config) error {
 	log.Infof("NewForConfig done")
 	s.informerFactory = informers.NewSharedInformerFactory(s.kc,
 		time.Duration(s.cfg.InformerFactoryResyncSecond)*time.Second)
+	// cert
+	if e = s.ensureCert(); e != nil {
+		log.Errorf("ensureCert failed, %v", e)
+		return e
+	}
+	log.Infof("ensureCert done")
 
 	// init
 	// init selected modules

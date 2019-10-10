@@ -52,7 +52,7 @@ spec:
           value: "admission-test"
         - name: SERVER_SERVICE_SELECTOR
           value: "zxq-app:admission-test"
-        image: cargo.dev.caicloud.xyz/release/kube-admission-test-server:cb141c8-dirty
+        image: cargo.dev.caicloud.xyz/release/kube-admission-test-server:local-run
         imagePullPolicy: IfNotPresent
       restartPolicy: Always
       serviceAccountName: admission

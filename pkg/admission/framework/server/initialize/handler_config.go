@@ -23,15 +23,21 @@ type Processor struct {
 }
 
 type Handler struct {
-	schema.GroupVersionResource `yaml:",inline" json:",inline"`
-
-	OpType        arv1b1.OperationType
+	// execute timeout by second
 	TimeoutSecond int32
-	Processors    []Processor
+	// Processors in seq
+	Processors []Processor
+}
+
+type GroupVersionResource struct {
+	// GVR
+	schema.GroupVersionResource `yaml:",inline" json:",inline"`
+	// Handlers by operation type
+	Handlers map[arv1b1.OperationType]*Handler
 }
 
 type HandlerConfig struct {
-	Handlers []Handler
+	Configs []GroupVersionResource
 }
 
 func ReadHandlerConfigFromFile(fp string) (*HandlerConfig, error) {
@@ -61,12 +67,49 @@ func (c *HandlerConfig) String() string {
 }
 
 func (c *HandlerConfig) Validate() error {
-	if len(c.Handlers) == 0 {
+	if len(c.Configs) == 0 {
 		return fmt.Errorf("review processors is empty")
 	}
-	for i, r := range c.Handlers {
-		if e := r.Validate(); e != nil {
-			return fmt.Errorf("review [%d][%s] validate failed, %v", i, r.String(), e)
+	for i, s := range c.Configs {
+		if e := s.Validate(); e != nil {
+			return fmt.Errorf("review [%d][%s] validate failed, %v", i, s.String(), e)
+		}
+	}
+	return nil
+}
+
+func (s *GroupVersionResource) String() string {
+	return strings.Join([]string{s.Group, s.Version, s.Resource}, "/")
+}
+
+func (s *GroupVersionResource) Validate() error {
+	if s.GroupVersionResource.Empty() {
+		return errors.ErrEmptyGVR
+	}
+	if len(s.Handlers) == 0 {
+		return fmt.Errorf("no handler in set")
+	}
+	for opType, h := range s.Handlers {
+		if !util.IsOperationTypeLeague(opType) {
+			return fmt.Errorf("op type %v is illegal", opType)
+		}
+		if e := h.Validate(); e != nil {
+			return fmt.Errorf("handler [%s] validate failed, %v", opType, e)
+		}
+	}
+	return nil
+}
+
+func (h *Handler) Validate() error {
+	if h.TimeoutSecond < 0 || h.TimeoutSecond > 30 {
+		return errors.ErrBadTimeoutSecond
+	}
+	if len(h.Processors) == 0 {
+		return fmt.Errorf("handler processors is empty")
+	}
+	for i, p := range h.Processors {
+		if e := p.Validate(); e != nil {
+			return fmt.Errorf("handler processor [%d][%s] validate failed, %v", i, p.String(), e)
 		}
 	}
 	return nil
@@ -82,31 +125,6 @@ func (p *Processor) Validate() error {
 	}
 	if p.Name == "" {
 		return fmt.Errorf("processor name is empty")
-	}
-	return nil
-}
-
-func (h *Handler) String() string {
-	return strings.Join([]string{h.Group, h.Version, h.Resource, string(h.OpType)}, "/")
-}
-
-func (h *Handler) Validate() error {
-	if h.GroupVersionResource.Empty() {
-		return errors.ErrEmptyGVR
-	}
-	if !util.IsOperationTypeLeague(h.OpType) {
-		return fmt.Errorf("review op type is illegal")
-	}
-	if h.TimeoutSecond < 0 || h.TimeoutSecond > 30 {
-		return errors.ErrBadTimeoutSecond
-	}
-	if len(h.Processors) == 0 {
-		return fmt.Errorf("review processors is empty")
-	}
-	for i, p := range h.Processors {
-		if e := p.Validate(); e != nil {
-			return fmt.Errorf("review processor [%d][%s] validate failed, %v", i, p.String(), e)
-		}
 	}
 	return nil
 }

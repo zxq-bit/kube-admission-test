@@ -1,53 +1,47 @@
-handlers:
+configs:
 - group: ""
   version: v1
   resource: pods
-  optype: CREATE
-  timeoutsecond: 30
-  processors:
-  - model: demo
-    name: PodExample
-  - model: demo
-    name: PodGPUVisible
-- group: ""
-  version: v1
-  resource: pods
-  optype: UPDATE
-  timeoutsecond: 30
-  processors:
-  - model: demo
-    name: PodExample
-  - model: demo
-    name: PodGPUVisible
-- group: ""
-  version: v1
-  resource: configmaps
-  optype: CREATE
-  timeoutsecond: 22
-  processors:
-  - model: demo
-    name: ConfigMapExample
+  handlers:
+    CREATE:
+      timeoutsecond: 11
+      processors:
+      - module: demo
+        name: PodExample
+      - module: demo
+        name: PodGPUVisible
+    UPDATE:
+      timeoutsecond: 11
+      processors:
+      - module: demo
+        name: PodExample
+      - module: demo
+        name: PodGPUVisible
 - group: ""
   version: v1
   resource: configmaps
-  optype: UPDATE
-  timeoutsecond: 3
-  processors:
-  - model: demo
-    name: ConfigMapExample
+  handlers:
+    CREATE:
+      timeoutsecond: 0
+      processors:
+      - module: demo
+        name: ConfigMapExample
+    UPDATE:
+      timeoutsecond: 30
+      processors:
+      - module: demo
+        name: ConfigMapExample
 - group: apps
   version: v1
   resource: deployments
-  optype: CREATE
-  timeoutsecond: 22
-  processors:
-  - model: demo
-    name: DpCheckMntRef
-- group: apps
-  version: v1
-  resource: deployments
-  optype: UPDATE
-  timeoutsecond: 3
-  processors:
-  - model: demo
-    name: DpCheckMntRef
+  handlers:
+    CREATE:
+      timeoutsecond: 3
+      processors:
+      - module: demo
+        name: DpCheckMntRef
+    UPDATE:
+      timeoutsecond: 5
+      processors:
+      - module: demo
+        name: DpCheckMntRef

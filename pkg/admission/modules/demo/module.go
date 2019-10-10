@@ -12,6 +12,10 @@ import (
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 )
 
+func init() {
+	module.RegisterMaker(ModuleName, NewModule)
+}
+
 type Module struct {
 	kc kubernetes.Interface
 	f  informers.SharedInformerFactory

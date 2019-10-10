@@ -93,7 +93,6 @@ func (s *Server) init(config *nirvana.Config) error {
 
 	// init
 	// init selected modules
-	s.ensureModuleMaker()
 	if e = s.initModules(); e != nil {
 		log.Errorf("initModules failed, %v", e)
 		return e

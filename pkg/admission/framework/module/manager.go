@@ -3,30 +3,58 @@ package module
 import (
 	"fmt"
 	"sort"
+	"sync"
 
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
 
+	"github.com/caicloud/clientset/informers"
+	"github.com/caicloud/clientset/kubernetes"
 	"github.com/caicloud/go-common/interfaces"
 	"github.com/caicloud/nirvana/log"
 )
 
-type Maker func() (Module, error)
+var (
+	moduleMakerManager MakerManager
+)
+
+func GetModuleMakerManager() *MakerManager {
+	return &moduleMakerManager
+}
+
+func RegisterMaker(key string, maker Maker) {
+	moduleMakerManager.Register(key, maker)
+}
+
+type Maker func(kc kubernetes.Interface, f informers.SharedInformerFactory) (Module, error)
+
+type MakerManager struct {
+	makerMap map[string]Maker
+	lock     sync.RWMutex
+}
 
 type Manager struct {
-	makerMap  map[string]Maker
 	moduleMap map[string]Module
 }
 
-func (c *Manager) RegisterMaker(key string, maker Maker) {
+func (c *MakerManager) Register(key string, maker Maker) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
 	if c.makerMap == nil {
 		c.makerMap = map[string]Maker{}
 	}
 	c.makerMap[key] = maker
+
+	log.Infof("ModuleMaker register: %s", key)
 }
 
-func (c *Manager) ExecuteMakers(filter util.ModuleEnabledFilter) error {
+func (c *MakerManager) ExecuteMakers(kc kubernetes.Interface, f informers.SharedInformerFactory,
+	filter util.ModuleEnabledFilter) (re Manager, e error) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
 	if len(c.makerMap) == 0 {
-		return nil
+		return re, nil
 	}
 	if filter == nil {
 		filter = func(name string) bool { return true }
@@ -39,19 +67,19 @@ func (c *Manager) ExecuteMakers(filter util.ModuleEnabledFilter) error {
 			continue
 		}
 		// do make
-		module, e := maker()
+		module, e := maker(kc, f)
 		if e != nil {
 			log.Errorf("%s execute failed, %v", logPrefix, e)
-			return e
+			return re, e
 		}
 		// register
-		e = c.registerModules(module)
+		e = re.registerModules(module)
 		if e != nil {
 			log.Errorf("%s register failed, %v", logPrefix, e)
-			return e
+			return re, e
 		}
 	}
-	return nil
+	return re, nil
 }
 
 func (c *Manager) registerModules(modules ...Module) error {

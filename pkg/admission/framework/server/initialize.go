@@ -4,18 +4,21 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/module"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
+	_ "github.com/zxq-bit/kube-admission-test/pkg/admission/install"
 
 	"github.com/caicloud/nirvana/log"
 )
 
-func (s *Server) initModules() error {
+func (s *Server) initModules() (err error) {
 	moduleFilter := util.MakeModuleEnabledFilter(s.enableOptions)
-	e := s.moduleManager.ExecuteMakers(moduleFilter)
-	if e != nil {
-		log.Errorf("initModules ExecuteMakers failed, %v", e)
+	moduleMaker := module.GetModuleMakerManager()
+	s.moduleManager, err = moduleMaker.ExecuteMakers(s.kc, s.informerFactory, moduleFilter)
+	if err != nil {
+		log.Errorf("initModules ExecuteMakers failed, %v", err)
 	}
-	return e
+	return err
 }
 
 func (s *Server) initReviews() error {
@@ -46,12 +49,12 @@ func (s *Server) initReviews() error {
 					continue
 				}
 				// get module processor
-				module := s.moduleManager.GetModule(pMeta.Module)
-				if module == nil {
+				m := s.moduleManager.GetModule(pMeta.Module)
+				if m == nil {
 					log.Errorf("%s module not found", logPrefix)
 					return fmt.Errorf("module %s not register in server", pMeta.Module)
 				}
-				p := module.GetProcessor(pMeta.Name)
+				p := m.GetProcessor(pMeta.Name)
 				if p == nil {
 					log.Errorf("%s processor not found", logPrefix)
 					return fmt.Errorf("porcessor %s not register in module %s", pMeta.Name, pMeta.Module)

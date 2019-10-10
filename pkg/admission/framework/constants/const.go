@@ -7,19 +7,21 @@ import (
 
 const (
 	DefaultListenPort                  = 6666
+	DefaultCertSecretNamespace         = metav1.NamespaceSystem
+	DefaultCertSecretName              = "admission-cert"
 	DefaultCertTempDir                 = "/tmp"
 	DefaultCertFileName                = "admission.cert"
 	DefaultKeyFileName                 = "admission.key"
 	AdmissionsAll                      = "*"
 	DefaultServiceNamespace            = metav1.NamespaceSystem
 	DefaultServiceName                 = "admission-server-collection"
-	DefaultServiceSelector             = "zxq-app:admission-test,selector-test:test"
 	DefaultInformerFactoryResyncSecond = 60
 	DefaultReviewConfigFilePath        = "/caicloud/compass/admission/handler.yaml"
 
-	SelectorSplitKey   = ","
-	SelectorKVSplitKey = ":"
-	AdmissionSplitKey  = ","
+	AdmissionSplitKey = ","
+
+	CertSecretKeyKey  = "key"
+	CertSecretKeyCert = "cert"
 
 	APIRootPath = "/apis/v1alpha1"
 )

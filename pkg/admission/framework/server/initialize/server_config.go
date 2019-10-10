@@ -13,10 +13,11 @@ type Config struct {
 	// informer
 	InformerFactoryResyncSecond int32 `desc:"kubernetes informer factory resync time by seconds"`
 	// admit
-	ServiceNamespace string `desc:"admission service namespace"`
-	ServiceName      string `desc:"admission service name"`
-	ServiceSelector  string `desc:"admission service selector labels key value pairs"`
-	CertTempDir      string `desc:"admission server cert file template dir path"`
+	ServiceNamespace    string `desc:"admission service namespace"`
+	ServiceName         string `desc:"admission service name"`
+	CertTempDir         string `desc:"admission server cert file template dir path"`
+	CertSecretNamespace string `desc:"admission server cert secret namespace"`
+	CertSecretName      string `desc:"admission server cert secret name"`
 	// enable
 	Admissions string `desc:"a list of admissions to enable. '*' enables all on-by-default admissions"`
 	// review config
@@ -28,8 +29,9 @@ func DefaultServerConfig() Config {
 		InformerFactoryResyncSecond: constants.DefaultInformerFactoryResyncSecond,
 		ServiceNamespace:            constants.DefaultServiceNamespace,
 		ServiceName:                 constants.DefaultServiceName,
-		ServiceSelector:             constants.DefaultServiceSelector,
 		CertTempDir:                 constants.DefaultCertTempDir,
+		CertSecretNamespace:         constants.DefaultCertSecretNamespace,
+		CertSecretName:              constants.DefaultCertSecretName,
 		Admissions:                  constants.AdmissionsAll,
 		ReviewConfigFile:            constants.DefaultReviewConfigFilePath,
 	}

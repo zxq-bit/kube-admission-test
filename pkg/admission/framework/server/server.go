@@ -22,12 +22,11 @@ type Server struct {
 	cfg initialize.Config
 	cmd config.NirvanaCommand
 	// parsed
-	enableOptions   []string
-	serviceSelector map[string]string
-	caBundle        []byte
-	certFile        string
-	keyFile         string
-	handlerConfig   *initialize.HandlerConfig
+	enableOptions []string
+	caBundle      []byte
+	certFile      string
+	keyFile       string
+	handlerConfig *initialize.HandlerConfig
 
 	// kube
 	kc              kubernetes.Interface
@@ -116,12 +115,6 @@ func (s *Server) init(config *nirvana.Config) error {
 		nirvana.TLS(s.certFile, s.keyFile),
 	)
 	log.Infof("Configure done")
-	// service
-	if e = s.ensureService(int(config.Port())); e != nil {
-		log.Errorf("ensureService failed, %v", e)
-		return e
-	}
-	log.Infof("ensureService done")
 	// webhooks
 	if e = s.ensureWebhooks(); e != nil {
 		log.Errorf("ensureWebhooks failed, %v", e)

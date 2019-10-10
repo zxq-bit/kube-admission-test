@@ -3,7 +3,7 @@ package demo
 import (
 	"fmt"
 
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/model"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/module"
 
 	"github.com/caicloud/clientset/informers"
 	"github.com/caicloud/clientset/kubernetes"
@@ -12,7 +12,7 @@ import (
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 )
 
-type Model struct {
+type Module struct {
 	kc kubernetes.Interface
 	f  informers.SharedInformerFactory
 
@@ -23,7 +23,7 @@ type Model struct {
 }
 
 const (
-	ModelName = "demo"
+	ModuleName = "demo"
 
 	ProcessorNameCmExample     = "ConfigMapExample"
 	ProcessorNamePodExample    = "PodExample"
@@ -31,14 +31,14 @@ const (
 	ProcessorNameDpCheckMntRef = "DpCheckMntRef"
 )
 
-func NewModel(kc kubernetes.Interface, f informers.SharedInformerFactory) (model.Model, error) {
+func NewModule(kc kubernetes.Interface, f informers.SharedInformerFactory) (module.Module, error) {
 	if interfaces.IsNil(kc) {
 		return nil, fmt.Errorf("nil kubernetes client")
 	}
 	if interfaces.IsNil(f) {
 		return nil, fmt.Errorf("nil kubernetes informer factory")
 	}
-	m := &Model{
+	m := &Module{
 		kc: kc,
 		f:  f,
 	}
@@ -55,11 +55,11 @@ func NewModel(kc kubernetes.Interface, f informers.SharedInformerFactory) (model
 	return m, nil
 }
 
-func (m *Model) Name() string { return ModelName }
+func (m *Module) Name() string { return ModuleName }
 
-func (m *Model) Start(stopCh <-chan struct{}) {}
+func (m *Module) Start(stopCh <-chan struct{}) {}
 
-func (m *Model) GetProcessor(name string) interface{} {
+func (m *Module) GetProcessor(name string) interface{} {
 	if p, ok := m.pMap[name]; ok && p != nil {
 		return p
 	}

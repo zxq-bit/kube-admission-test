@@ -18,8 +18,8 @@ import (
 )
 
 type Processor struct {
-	Model string
-	Name  string
+	Module string
+	Name   string
 }
 
 type Handler struct {
@@ -73,12 +73,12 @@ func (c *HandlerConfig) Validate() error {
 }
 
 func (p *Processor) String() string {
-	return strings.Join([]string{p.Model, p.Name}, "/")
+	return strings.Join([]string{p.Module, p.Name}, "/")
 }
 
 func (p *Processor) Validate() error {
-	if p.Model == "" {
-		return fmt.Errorf("processor model is empty")
+	if p.Module == "" {
+		return fmt.Errorf("processor module is empty")
 	}
 	if p.Name == "" {
 		return fmt.Errorf("processor name is empty")

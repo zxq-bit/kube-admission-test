@@ -22,8 +22,8 @@ const (
 var (
 	podProcessorGPUVisible = &rcorev1.PodProcessor{
 		Metadata: processor.Metadata{
-			Name:      ProcessorNamePodGPUVisible,
-			ModelName: ModelName,
+			Name:       ProcessorNamePodGPUVisible,
+			ModuleName: ModuleName,
 			IgnoreNamespaces: []string{
 				metav1.NamespaceDefault,
 				metav1.NamespaceSystem,

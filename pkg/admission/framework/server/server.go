@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/model"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/module"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review/manager"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/server/initialize"
 
@@ -32,8 +32,8 @@ type Server struct {
 	kc              kubernetes.Interface
 	informerFactory informers.SharedInformerFactory
 
-	// model & review
-	modelManager  model.Manager
+	// module & review
+	moduleManager module.Manager
 	reviewManager manager.Manager
 
 	stopCh chan struct{}
@@ -86,13 +86,13 @@ func (s *Server) init(config *nirvana.Config) error {
 		time.Duration(s.cfg.InformerFactoryResyncSecond)*time.Second)
 
 	// init
-	// init selected models
-	s.ensureModelMaker()
-	if e = s.initModels(); e != nil {
-		log.Errorf("initModels failed, %v", e)
+	// init selected modules
+	s.ensureModuleMaker()
+	if e = s.initModules(); e != nil {
+		log.Errorf("initModules failed, %v", e)
 		return e
 	}
-	log.Infof("initModels done")
+	log.Infof("initModules done")
 	// init selected processors
 	if e = s.initReviews(); e != nil {
 		log.Errorf("initReviews failed, %v", e)
@@ -101,12 +101,12 @@ func (s *Server) init(config *nirvana.Config) error {
 	log.Infof("initReviews done")
 
 	// start
-	// models
-	if e = s.startModels(); e != nil {
-		log.Errorf("startModels failed, %v", e)
+	// modules
+	if e = s.startModules(); e != nil {
+		log.Errorf("startModules failed, %v", e)
 		return e
 	}
-	log.Infof("startModels done")
+	log.Infof("startModules done")
 	// nirvana
 	log.Infof("s.cfg.certFile:%s", s.certFile)
 	log.Infof("s.cfg.keyFile:%s", s.keyFile)

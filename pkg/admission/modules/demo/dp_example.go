@@ -11,11 +11,11 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 )
 
-func (m *Model) getDpProcessorCheckMntRef() *rappsv1.DeploymentProcessor {
+func (m *Module) getDpProcessorCheckMntRef() *rappsv1.DeploymentProcessor {
 	return &rappsv1.DeploymentProcessor{
 		Metadata: processor.Metadata{
 			Name:             ProcessorNamePodExample,
-			ModelName:        ModelName,
+			ModuleName:       ModuleName,
 			IgnoreNamespaces: []string{},
 			Type:             constants.ProcessorTypeValidate,
 		},
@@ -23,7 +23,7 @@ func (m *Model) getDpProcessorCheckMntRef() *rappsv1.DeploymentProcessor {
 	}
 }
 
-func (m *Model) dpReviewMntRef(ctx context.Context, in *appsv1.Deployment) (err error) {
+func (m *Module) dpReviewMntRef(ctx context.Context, in *appsv1.Deployment) (err error) {
 	for _, v := range in.Spec.Template.Spec.Volumes {
 		if v.ConfigMap != nil {
 			cmName := v.ConfigMap.Name

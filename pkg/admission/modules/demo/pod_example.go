@@ -11,14 +11,14 @@ import (
 )
 
 var (
-	cmProcessorExample = &rcorev1.ConfigMapProcessor{
+	podProcessorExample = &rcorev1.PodProcessor{
 		Metadata: processor.Metadata{
-			Name:             ProcessorNameCmExample,
-			ModelName:        ModelName,
+			Name:             ProcessorNamePodExample,
+			ModuleName:       ModuleName,
 			IgnoreNamespaces: []string{},
 			Type:             constants.ProcessorTypeMutate,
 		},
-		Review: func(ctx context.Context, in *corev1.ConfigMap) (err error) {
+		Review: func(ctx context.Context, in *corev1.Pod) (err error) {
 			if in.Annotations == nil {
 				in.Annotations = map[string]string{}
 			}

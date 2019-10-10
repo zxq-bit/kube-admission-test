@@ -19,9 +19,9 @@ type Metadata struct {
 	// Name describe the name of this processor, like deployment-workload-name
 	// effective at annotation's ignore option
 	Name string
-	// ModelName describe the model of this config, like app or resource
+	// ModuleName describe the module of this config, like app or resource
 	// effective at admission server ignore option
-	ModelName string
+	ModuleName string
 	// IgnoredNamespaces set namespaces that will be ignored
 	IgnoreNamespaces []string
 	// IgnoreOwnerReferences set owner setting that objects who match them will be ignored
@@ -32,12 +32,12 @@ type Metadata struct {
 }
 
 func (meta *Metadata) Key() string {
-	return meta.ModelName + constants.ProcessorKeySplit + meta.Name
+	return meta.ModuleName + constants.ProcessorKeySplit + meta.Name
 }
 
 func (meta *Metadata) Validate() error {
-	if meta.ModelName == "" {
-		return fmt.Errorf("empty processor model name")
+	if meta.ModuleName == "" {
+		return fmt.Errorf("empty processor module name")
 	}
 	if meta.Name == "" {
 		return fmt.Errorf("empty processor name")

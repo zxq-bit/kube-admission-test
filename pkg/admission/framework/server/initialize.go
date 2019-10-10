@@ -9,17 +9,17 @@ import (
 	"github.com/caicloud/nirvana/log"
 )
 
-func (s *Server) initModels() error {
-	modelFilter := util.MakeModelEnabledFilter(s.enableOptions)
-	e := s.modelManager.ExecuteMakers(modelFilter)
+func (s *Server) initModules() error {
+	moduleFilter := util.MakeModuleEnabledFilter(s.enableOptions)
+	e := s.moduleManager.ExecuteMakers(moduleFilter)
 	if e != nil {
-		log.Errorf("initModels ExecuteMakers failed, %v", e)
+		log.Errorf("initModules ExecuteMakers failed, %v", e)
 	}
 	return e
 }
 
 func (s *Server) initReviews() error {
-	modelFilter := util.MakeModelEnabledFilter(s.enableOptions)
+	moduleFilter := util.MakeModuleEnabledFilter(s.enableOptions)
 	for _, h := range s.handlerConfig.Handlers {
 		gvr := h.GroupVersionResource
 		opType := h.OpType
@@ -38,22 +38,22 @@ func (s *Server) initReviews() error {
 		}
 		// register processors
 		for i, pMeta := range h.Processors {
-			logPrefix := fmt.Sprintf("%s[%d][%s/%s]", logBase, i, pMeta.Model, pMeta.Name)
-			// filter by model
-			if !modelFilter(pMeta.Model) {
+			logPrefix := fmt.Sprintf("%s[%d][%s/%s]", logBase, i, pMeta.Module, pMeta.Name)
+			// filter by module
+			if !moduleFilter(pMeta.Module) {
 				log.Warningf("%s skipped for not enabled", logPrefix)
 				continue
 			}
-			// get model processor
-			model := s.modelManager.GetModel(pMeta.Model)
-			if model == nil {
-				log.Errorf("%s model not found", logPrefix)
-				return fmt.Errorf("model %s not register in server", pMeta.Model)
+			// get module processor
+			module := s.moduleManager.GetModule(pMeta.Module)
+			if module == nil {
+				log.Errorf("%s module not found", logPrefix)
+				return fmt.Errorf("module %s not register in server", pMeta.Module)
 			}
-			p := model.GetProcessor(pMeta.Name)
+			p := module.GetProcessor(pMeta.Name)
 			if p == nil {
 				log.Errorf("%s processor not found", logPrefix)
-				return fmt.Errorf("porcessor %s not register in model %s", pMeta.Name, pMeta.Model)
+				return fmt.Errorf("porcessor %s not register in module %s", pMeta.Name, pMeta.Module)
 			}
 			// register
 			e = handler.Register(p)

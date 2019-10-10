@@ -58,13 +58,13 @@ func simpleEnabledFilter(values []string, name string) bool {
 	return matchAll
 }
 
-// filter for model name
+// filter for module name
 
-// filter by model name, return true if enabled
-type ModelEnabledFilter EnabledFilter
+// filter by module name, return true if enabled
+type ModuleEnabledFilter EnabledFilter
 
-func MakeModelEnabledFilter(modelNames []string) ModelEnabledFilter {
-	return makeEnabledFilterFromValues(modelNames)
+func MakeModuleEnabledFilter(moduleNames []string) ModuleEnabledFilter {
+	return makeEnabledFilterFromValues(moduleNames)
 }
 
 // filter for namespaces
@@ -81,7 +81,7 @@ func makeNamespaceIgnoreFilter(nsNames []string) NamespaceIgnoreFilter {
 // ignore filter by annotations, return true if name in object ignore option from annotations
 type NameIgnoreFilter func(objAnno map[string]string) bool
 
-// makeNameIgnoreFilter make model/name filter, filter out name is in annotation
+// makeNameIgnoreFilter make module/name filter, filter out name is in annotation
 func makeNameIgnoreFilter(key, pathValue string) NameIgnoreFilter {
 	return func(anno map[string]string) bool {
 		if len(anno) == 0 {

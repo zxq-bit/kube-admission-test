@@ -1,18 +1,18 @@
 package server
 
 import (
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/model"
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/models/demo"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/module"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/modules/demo"
 )
 
-type ModelMaker func() (model.Model, error)
+type ModuleMaker func() (module.Module, error)
 
-func (s *Server) ensureModelMaker() {
+func (s *Server) ensureModuleMaker() {
 	// demo
-	s.modelManager.RegisterMaker(
-		demo.ModelName,
-		func() (model.Model, error) {
-			return demo.NewModel(s.kc, s.informerFactory)
+	s.moduleManager.RegisterMaker(
+		demo.ModuleName,
+		func() (module.Module, error) {
+			return demo.NewModule(s.kc, s.informerFactory)
 		},
 	)
 }

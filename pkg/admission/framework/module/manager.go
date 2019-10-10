@@ -1,4 +1,4 @@
-package model
+package module
 
 import (
 	"fmt"
@@ -10,11 +10,11 @@ import (
 	"github.com/caicloud/nirvana/log"
 )
 
-type Maker func() (Model, error)
+type Maker func() (Module, error)
 
 type Manager struct {
-	makerMap map[string]Maker
-	modelMap map[string]Model
+	makerMap  map[string]Maker
+	moduleMap map[string]Module
 }
 
 func (c *Manager) RegisterMaker(key string, maker Maker) {
@@ -24,7 +24,7 @@ func (c *Manager) RegisterMaker(key string, maker Maker) {
 	c.makerMap[key] = maker
 }
 
-func (c *Manager) ExecuteMakers(filter util.ModelEnabledFilter) error {
+func (c *Manager) ExecuteMakers(filter util.ModuleEnabledFilter) error {
 	if len(c.makerMap) == 0 {
 		return nil
 	}
@@ -32,20 +32,20 @@ func (c *Manager) ExecuteMakers(filter util.ModelEnabledFilter) error {
 		filter = func(name string) bool { return true }
 	}
 	for name, maker := range c.makerMap {
-		logPrefix := fmt.Sprintf("executeModelMaker[%s]", name)
+		logPrefix := fmt.Sprintf("executeModuleMaker[%s]", name)
 		// filter
 		if !filter(name) {
 			log.Warning("%s skipped for not enabled", logPrefix)
 			continue
 		}
 		// do make
-		model, e := maker()
+		module, e := maker()
 		if e != nil {
 			log.Errorf("%s execute failed, %v", logPrefix, e)
 			return e
 		}
 		// register
-		e = c.registerModels(model)
+		e = c.registerModules(module)
 		if e != nil {
 			log.Errorf("%s register failed, %v", logPrefix, e)
 			return e
@@ -54,36 +54,36 @@ func (c *Manager) ExecuteMakers(filter util.ModelEnabledFilter) error {
 	return nil
 }
 
-func (c *Manager) registerModels(models ...Model) error {
-	for _, m := range models {
+func (c *Manager) registerModules(modules ...Module) error {
+	for _, m := range modules {
 		if interfaces.IsNil(m) {
-			return fmt.Errorf("model is nil")
+			return fmt.Errorf("module is nil")
 		}
-		if c.modelMap == nil {
-			c.modelMap = make(map[string]Model, 1)
+		if c.moduleMap == nil {
+			c.moduleMap = make(map[string]Module, 1)
 		}
-		if _, exist := c.modelMap[m.Name()]; exist {
-			return fmt.Errorf("model %s already exist", m.Name())
+		if _, exist := c.moduleMap[m.Name()]; exist {
+			return fmt.Errorf("module %s already exist", m.Name())
 		}
-		c.modelMap[m.Name()] = m
+		c.moduleMap[m.Name()] = m
 	}
 	return nil
 }
 
-func (c *Manager) GetModel(name string) Model {
-	if c.modelMap == nil {
+func (c *Manager) GetModule(name string) Module {
+	if c.moduleMap == nil {
 		return nil
 	}
-	return c.modelMap[name]
+	return c.moduleMap[name]
 }
 
-func (c *Manager) ListModels() []Model {
-	l := len(c.modelMap)
+func (c *Manager) ListModules() []Module {
+	l := len(c.moduleMap)
 	if l == 0 {
 		return nil
 	}
-	re := make([]Model, 0, l)
-	for _, m := range c.modelMap {
+	re := make([]Module, 0, l)
+	for _, m := range c.moduleMap {
 		re = append(re, m)
 	}
 	sort.Slice(re, func(i, j int) bool {

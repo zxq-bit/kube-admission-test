@@ -174,3 +174,13 @@ func podsRawExtensionParser(raw *runtime.RawExtension) (*corev1.Pod, error) {
 	}
 	return parsed, nil
 }
+
+// GetContextOldPod get Pod old object from Context
+// no error if old object not exist, error if parse failed
+func GetContextOldPod(ctx context.Context) (*corev1.Pod, error) {
+	raw := util.GetContextOldObject(ctx)
+	if raw == nil { // no old object
+		return nil, nil
+	}
+	return podsRawExtensionParser(raw)
+}

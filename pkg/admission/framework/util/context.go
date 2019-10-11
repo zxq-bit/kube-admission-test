@@ -8,6 +8,7 @@ import (
 	"github.com/caicloud/go-common/interfaces"
 
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func getContextValue(ctx context.Context, k constants.ContextKey) string {
@@ -41,4 +42,19 @@ func GetContextOpType(ctx context.Context) arv1b1.OperationType {
 	return arv1b1.OperationType(
 		getContextValue(ctx, constants.ContextKeyOpType),
 	)
+}
+
+func SetContextOldObject(ctx context.Context, old *runtime.RawExtension) context.Context {
+	return context.WithValue(ctx, constants.ContextKeyOldObject, old)
+}
+
+func GetContextOldObject(ctx context.Context) *runtime.RawExtension {
+	if interfaces.IsNil(ctx) {
+		return nil
+	}
+	raw := ctx.Value(constants.ContextKeyOldObject)
+	if raw == nil {
+		return nil
+	}
+	return raw.(*runtime.RawExtension)
 }

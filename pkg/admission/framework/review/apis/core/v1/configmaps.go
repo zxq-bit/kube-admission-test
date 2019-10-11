@@ -174,3 +174,13 @@ func configmapsRawExtensionParser(raw *runtime.RawExtension) (*corev1.ConfigMap,
 	}
 	return parsed, nil
 }
+
+// GetContextOldConfigMap get ConfigMap old object from Context
+// no error if old object not exist, error if parse failed
+func GetContextOldConfigMap(ctx context.Context) (*corev1.ConfigMap, error) {
+	raw := util.GetContextOldObject(ctx)
+	if raw == nil { // no old object
+		return nil, nil
+	}
+	return configmapsRawExtensionParser(raw)
+}

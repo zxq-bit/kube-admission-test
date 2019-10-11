@@ -174,3 +174,13 @@ func secretsRawExtensionParser(raw *runtime.RawExtension) (*corev1.Secret, error
 	}
 	return parsed, nil
 }
+
+// GetContextOldSecret get Secret old object from Context
+// no error if old object not exist, error if parse failed
+func GetContextOldSecret(ctx context.Context) (*corev1.Secret, error) {
+	raw := util.GetContextOldObject(ctx)
+	if raw == nil { // no old object
+		return nil, nil
+	}
+	return secretsRawExtensionParser(raw)
+}

@@ -174,3 +174,13 @@ func replicasetsRawExtensionParser(raw *runtime.RawExtension) (*appsv1.ReplicaSe
 	}
 	return parsed, nil
 }
+
+// GetContextOldReplicaSet get ReplicaSet old object from Context
+// no error if old object not exist, error if parse failed
+func GetContextOldReplicaSet(ctx context.Context) (*appsv1.ReplicaSet, error) {
+	raw := util.GetContextOldObject(ctx)
+	if raw == nil { // no old object
+		return nil, nil
+	}
+	return replicasetsRawExtensionParser(raw)
+}

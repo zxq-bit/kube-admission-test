@@ -174,3 +174,13 @@ func persistentvolumeclaimsRawExtensionParser(raw *runtime.RawExtension) (*corev
 	}
 	return parsed, nil
 }
+
+// GetContextOldPersistentVolumeClaim get PersistentVolumeClaim old object from Context
+// no error if old object not exist, error if parse failed
+func GetContextOldPersistentVolumeClaim(ctx context.Context) (*corev1.PersistentVolumeClaim, error) {
+	raw := util.GetContextOldObject(ctx)
+	if raw == nil { // no old object
+		return nil, nil
+	}
+	return persistentvolumeclaimsRawExtensionParser(raw)
+}

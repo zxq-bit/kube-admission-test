@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"path"
 
+	// call registers on pkg init
+	_ "github.com/zxq-bit/kube-admission-test/pkg/admission/install"
+
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/module"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
-	_ "github.com/zxq-bit/kube-admission-test/pkg/admission/install"
 
 	"github.com/caicloud/nirvana/log"
 )

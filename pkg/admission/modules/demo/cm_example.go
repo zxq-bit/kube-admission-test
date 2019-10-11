@@ -19,6 +19,14 @@ var (
 			Type:             constants.ProcessorTypeMutate,
 		},
 		Review: func(ctx context.Context, in *corev1.ConfigMap) (err error) {
+			old, err := rcorev1.GetContextOldConfigMap(ctx)
+			if err != nil {
+				return err
+			}
+			if old != nil && old.Annotations != nil && old.Annotations["mutated"] != "" {
+				// has been set, skip
+				return
+			}
 			if in.Annotations == nil {
 				in.Annotations = map[string]string{}
 			}

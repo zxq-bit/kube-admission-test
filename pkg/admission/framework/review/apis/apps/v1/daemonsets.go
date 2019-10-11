@@ -174,3 +174,13 @@ func daemonsetsRawExtensionParser(raw *runtime.RawExtension) (*appsv1.DaemonSet,
 	}
 	return parsed, nil
 }
+
+// GetContextOldDaemonSet get DaemonSet old object from Context
+// no error if old object not exist, error if parse failed
+func GetContextOldDaemonSet(ctx context.Context) (*appsv1.DaemonSet, error) {
+	raw := util.GetContextOldObject(ctx)
+	if raw == nil { // no old object
+		return nil, nil
+	}
+	return daemonsetsRawExtensionParser(raw)
+}

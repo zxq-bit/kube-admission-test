@@ -174,3 +174,13 @@ func {{.ResourceName}}RawExtensionParser(raw *runtime.RawExtension) (*{{.PkgName
 	}
 	return parsed, nil
 }
+
+// GetContextOld{{.KindName}} get {{.KindName}} old object from Context
+// no error if old object not exist, error if parse failed
+func GetContextOld{{.KindName}}(ctx context.Context) (*{{.PkgName}}.{{.KindName}}, error) {
+	raw := util.GetContextOldObject(ctx)
+	if raw == nil { // no old object
+		return nil, nil
+	}
+	return {{.ResourceName}}RawExtensionParser(raw)
+}

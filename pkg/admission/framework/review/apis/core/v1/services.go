@@ -174,3 +174,13 @@ func servicesRawExtensionParser(raw *runtime.RawExtension) (*corev1.Service, err
 	}
 	return parsed, nil
 }
+
+// GetContextOldService get Service old object from Context
+// no error if old object not exist, error if parse failed
+func GetContextOldService(ctx context.Context) (*corev1.Service, error) {
+	raw := util.GetContextOldObject(ctx)
+	if raw == nil { // no old object
+		return nil, nil
+	}
+	return servicesRawExtensionParser(raw)
+}

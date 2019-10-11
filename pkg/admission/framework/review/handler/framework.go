@@ -185,6 +185,7 @@ func (r *framework) ToNirvanaDescriptor() definition.Descriptor {
 					// context
 					ctx = util.SetContextLogBase(ctx, logPrefix)
 					ctx = util.SetContextOpType(ctx, r.opType)
+					ctx = util.SetContextOldObject(ctx, ar.Request.OldObject.DeepCopy())
 					// do review
 					obj := org.DeepCopyObject()
 					cost, e := r.reviewer.DoReview(ctx, &r.tracer, obj)

@@ -185,7 +185,13 @@ func (r *framework) ToNirvanaDescriptor() definition.Descriptor {
 					// context
 					ctx = util.SetContextLogBase(ctx, logPrefix)
 					ctx = util.SetContextOpType(ctx, r.opType)
-					ctx = util.SetContextOldObject(ctx, ar.Request.OldObject.DeepCopy())
+					if r.opType != arv1b1.Create {
+						if interfaces.IsNil(ar.Request.OldObject.Object) && len(ar.Request.OldObject.Raw) == 0 {
+							log.Warningf("%s old object empty", logPrefix)
+						} else {
+							ctx = util.SetContextOldObject(ctx, ar.Request.OldObject.DeepCopy())
+						}
+					}
 					// do review
 					obj := org.DeepCopyObject()
 					cost, e := r.reviewer.DoReview(ctx, &r.tracer, obj)

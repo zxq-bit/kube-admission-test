@@ -37,6 +37,7 @@ func ToAdmissionFailedResponse(uid types.UID, err error) *admissionv1b1.Admissio
 			UID:     uid,
 			Allowed: false,
 			Result: &metav1.Status{
+				Reason:  "admission:AdmissionFailed",
 				Message: err.Error(),
 			},
 		}

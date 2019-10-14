@@ -21,6 +21,23 @@ subjects:
 
 ---
 
+apiVersion: v1
+kind: Service
+metadata:
+  name: admission-test
+  namespace: default
+spec:
+  selector:
+    zxq-app: admission-test
+  ports:
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 6666
+  type: ClusterIP
+
+---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -50,8 +67,6 @@ spec:
           value: "default"
         - name: SERVER_SERVICE_NAME
           value: "admission-test"
-        - name: SERVER_SERVICE_SELECTOR
-          value: "zxq-app:admission-test"
         image: cargo.dev.caicloud.xyz/release/kube-admission-test-server:local-run
         imagePullPolicy: IfNotPresent
       restartPolicy: Always

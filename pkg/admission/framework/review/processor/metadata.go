@@ -35,6 +35,19 @@ func (meta *Metadata) Key() string {
 	return meta.ModuleName + constants.ProcessorKeySplit + meta.Name
 }
 
+func (meta *Metadata) LogPrefix() string {
+	var typeString string
+	switch meta.Type {
+	case constants.ProcessorTypeMutate:
+		typeString = "M"
+	case constants.ProcessorTypeValidate:
+		typeString = "V"
+	default:
+		typeString = string(meta.Type)
+	}
+	return fmt.Sprintf("%s(%s)", meta.Key(), typeString)
+}
+
 func (meta *Metadata) Validate() error {
 	if meta.ModuleName == "" {
 		return fmt.Errorf("empty processor module name")
@@ -43,7 +56,7 @@ func (meta *Metadata) Validate() error {
 		return fmt.Errorf("empty processor name")
 	}
 	if meta.Type != constants.ProcessorTypeValidate && meta.Type != constants.ProcessorTypeMutate {
-		return fmt.Errorf("%v invalid processor type %v", meta.Name, meta.Type)
+		return fmt.Errorf("%v invalid processor type %v", meta.Key(), meta.Type)
 	}
 	return nil
 }

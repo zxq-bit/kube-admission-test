@@ -56,7 +56,7 @@ func (p *DaemonSetProcessor) Validate() error {
 		return e
 	}
 	if p.Review == nil {
-		return fmt.Errorf("%v nil processor review function", p.Name)
+		return fmt.Errorf("%v nil processor review function", p.Key())
 	}
 	return nil
 }
@@ -125,7 +125,7 @@ func (h *DaemonSetHandler) DoReview(ctx context.Context, tracer *tracer.Tracer, 
 		}
 		// execute processors
 		for i, p := range h.processors {
-			logPrefix := logBase + fmt.Sprintf("[%d][%s]", i, p.Name)
+			logPrefix := logBase + fmt.Sprintf("[%d][%s]", i, p.LogPrefix())
 			// check ignore
 			if ignoreReason := h.objFilters[i](obj); ignoreReason != nil {
 				log.Infof("%s skip for %s", logPrefix, *ignoreReason)

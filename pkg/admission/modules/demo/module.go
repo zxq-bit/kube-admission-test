@@ -29,10 +29,11 @@ type Module struct {
 const (
 	ModuleName = "demo"
 
-	ProcessorNameCmExample     = "ConfigMapExample"
-	ProcessorNamePodExample    = "PodExample"
-	ProcessorNamePodGPUVisible = "PodGPUVisible"
-	ProcessorNameDpCheckMntRef = "DpCheckMntRef"
+	ProcessorNameCmExample       = "ConfigMapExample"
+	ProcessorNameCmDeletionAllow = "ConfigMapDeletionAllow"
+	ProcessorNamePodExample      = "PodExample"
+	ProcessorNamePodGPUVisible   = "PodGPUVisible"
+	ProcessorNameDpCheckMntRef   = "DpCheckMntRef"
 )
 
 func NewModule(kc kubernetes.Interface, f informers.SharedInformerFactory) (module.Module, error) {
@@ -51,10 +52,11 @@ func NewModule(kc kubernetes.Interface, f informers.SharedInformerFactory) (modu
 	m.secretLister = f.Core().V1().Secrets().Lister()
 
 	m.pMap = map[string]interface{}{
-		ProcessorNameCmExample:     cmProcessorExample,
-		ProcessorNamePodExample:    podProcessorExample,
-		ProcessorNamePodGPUVisible: podProcessorGPUVisible,
-		ProcessorNameDpCheckMntRef: m.getDpProcessorCheckMntRef(),
+		ProcessorNameCmExample:       cmProcessorExample,
+		ProcessorNameCmDeletionAllow: cmProcessorDeletionAllow,
+		ProcessorNamePodExample:      podProcessorExample,
+		ProcessorNamePodGPUVisible:   podProcessorGPUVisible,
+		ProcessorNameDpCheckMntRef:   m.getDpProcessorCheckMntRef(),
 	}
 	return m, nil
 }

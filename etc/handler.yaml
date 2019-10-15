@@ -31,6 +31,11 @@ configs:
       processors:
       - module: demo
         name: ConfigMapExample
+    DELETE:
+      timeoutsecond: 3
+      processors:
+      - module: demo
+        name: ConfigMapDeletionAllow
 - group: apps
   version: v1
   resource: deployments

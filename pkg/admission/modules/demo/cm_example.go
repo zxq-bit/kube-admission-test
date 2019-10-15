@@ -2,10 +2,12 @@ package demo
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/errors"
 	rcorev1 "github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review/apis/core/v1"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review/processor"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
@@ -13,11 +15,13 @@ import (
 	"github.com/caicloud/go-common/kubernetes/meta"
 	"github.com/caicloud/nirvana/log"
 
+	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 )
 
 var (
-	cmProcessorExample = makeCmExampleProcessor()
+	cmProcessorExample       = makeCmExampleProcessor()
+	cmProcessorDeletionAllow = makeCmDeletionAllowProcessor()
 )
 
 func makeCmExampleProcessor() *rcorev1.ConfigMapProcessor {
@@ -34,7 +38,7 @@ func makeCmExampleProcessor() *rcorev1.ConfigMapProcessor {
 		old, err := rcorev1.GetContextOldConfigMap(ctx)
 		if err != nil {
 			log.Errorf("%s GetContextOldConfigMap failed, %v", logPrefix, err)
-			return err
+			return errors.NewBadRequest(err)
 		}
 		const (
 			annoKey = "demo.caicloud.io/process-version"
@@ -55,4 +59,50 @@ func makeCmExampleProcessor() *rcorev1.ConfigMapProcessor {
 		return
 	}
 	return p
+}
+
+func makeCmDeletionAllowProcessor() *rcorev1.ConfigMapProcessor {
+	p := &rcorev1.ConfigMapProcessor{
+		Metadata: processor.Metadata{
+			Name:             ProcessorNameCmDeletionAllow,
+			ModuleName:       ModuleName,
+			IgnoreNamespaces: []string{},
+			Type:             constants.ProcessorTypeValidate,
+		},
+	}
+	p.Review = func(ctx context.Context, in *corev1.ConfigMap) (err error) {
+		logPrefix := fmt.Sprintf("%s[%s]", util.GetContextLogBase(ctx), p.LogPrefix())
+		if opType := util.GetContextOpType(ctx); opType != arv1b1.Delete {
+			log.Errorf("%s got unexpected op type: '%v'", logPrefix, opType)
+			return errors.NewBadRequest(fmt.Errorf("unexpected op type '%v'", opType))
+		}
+		old, err := rcorev1.GetContextOldConfigMap(ctx)
+		if err != nil {
+			log.Errorf("%s GetContextOldConfigMap failed, %v", logPrefix, err)
+			return errors.NewInternalServerError(err)
+		}
+
+		const (
+			annoKey = "demo.caicloud.io/deletion-not-allowed"
+		)
+		log.Infof("%s old: %s", logPrefix, toJson(old))
+		log.Infof("%s new: %s", logPrefix, toJson(in))
+		toCheck := old
+		if in != nil {
+			toCheck = in
+		}
+		notAllowed, _ := strconv.ParseBool(meta.GetAnnotation(toCheck, annoKey))
+		if notAllowed {
+			log.Errorf("%s not allowed to del", logPrefix)
+			return errors.NewBadRequest(fmt.Errorf("deletion not allowed"))
+		}
+		log.Infof("%s allowed to del", logPrefix)
+		return nil
+	}
+	return p
+}
+
+func toJson(v interface{}) string {
+	b, _ := json.Marshal(v)
+	return string(b)
 }

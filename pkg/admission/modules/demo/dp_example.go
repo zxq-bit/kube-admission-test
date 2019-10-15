@@ -14,7 +14,7 @@ import (
 func (m *Module) getDpProcessorCheckMntRef() *rappsv1.DeploymentProcessor {
 	return &rappsv1.DeploymentProcessor{
 		Metadata: processor.Metadata{
-			Name:             ProcessorNamePodExample,
+			Name:             ProcessorNameDpCheckMntRef,
 			ModuleName:       ModuleName,
 			IgnoreNamespaces: []string{},
 			Type:             constants.ProcessorTypeValidate,

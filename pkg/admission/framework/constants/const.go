@@ -56,7 +56,6 @@ const (
 type ContextKey string
 
 const (
-	ContextKeyLogBase   ContextKey = "logBase"
-	ContextKeyOpType    ContextKey = "opType"
-	ContextKeyOldObject ContextKey = "oldObject"
+	ContextKeyLogBase          ContextKey = "logBase"
+	ContextKeyAdmissionRequest ContextKey = "admissionRequest"
 )

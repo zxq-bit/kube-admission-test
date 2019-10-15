@@ -2,6 +2,9 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"path"
 
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 
@@ -37,7 +40,9 @@ func ToAdmissionFailedResponse(uid types.UID, err error) *admissionv1b1.Admissio
 			UID:     uid,
 			Allowed: false,
 			Result: &metav1.Status{
-				Reason:  "admission:AdmissionFailed",
+				Code:    http.StatusBadRequest,
+				Reason:  metav1.StatusReasonBadRequest,
+				Status:  metav1.StatusFailure,
 				Message: err.Error(),
 			},
 		}
@@ -45,6 +50,12 @@ func ToAdmissionFailedResponse(uid types.UID, err error) *admissionv1b1.Admissio
 }
 
 func ToAdmissionPassResponse(uid types.UID, org, obj runtime.Object) *admissionv1b1.AdmissionResponse {
+	if org == nil || obj == nil {
+		return &admissionv1b1.AdmissionResponse{
+			UID:     uid,
+			Allowed: true,
+		}
+	}
 	orgJSON, err := json.Marshal(org)
 	if err != nil {
 		return ToAdmissionFailedResponse(uid, err)
@@ -72,4 +83,14 @@ func ToAdmissionPassResponse(uid types.UID, org, obj runtime.Object) *admissionv
 		Patch:     patch,
 		PatchType: &patchType,
 	}
+}
+
+func AdmissionRequestLogBase(ar *admissionv1b1.AdmissionRequest) string {
+	if ar == nil {
+		return ""
+	}
+	return fmt.Sprintf("[%s][%v][%s]",
+		path.Join(ar.Resource.Group, ar.Resource.Version, ar.Resource.Resource),
+		ar.Operation,
+		path.Join(ar.Namespace, ar.Name))
 }

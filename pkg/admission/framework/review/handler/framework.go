@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
+
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/errors"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review"
@@ -53,10 +55,10 @@ func NewFramework(gvr schema.GroupVersionResource, opType arv1b1.OperationType,
 		return nil, fmt.Errorf("bad operation type %v", opType)
 	}
 	if parser == nil {
-		return nil, errors.ErrNilRawExtensionParser
+		return nil, fmt.Errorf("RawExtensionParser is nil")
 	}
 	if interfaces.IsNil(reviewer) {
-		return nil, errors.ErrNilReviewer
+		return nil, fmt.Errorf("reviewer is nil")
 	}
 	return &framework{
 		gvr:      gvr,
@@ -125,7 +127,7 @@ func (r *framework) ToNirvanaDescriptor() definition.Descriptor {
 	if r.timeoutSecond > 0 {
 		middlewares = append(middlewares, middleware.Timeout(time.Duration(r.timeoutSecond)*time.Second))
 	}
-	logBase := fmt.Sprintf("[%v/%v/%v][%v]", r.gvr.Group, r.gvr.Version, r.gvr.Resource, r.opType)
+	handlerLogPrefix := fmt.Sprintf("[%v/%v/%v][%v]", r.gvr.Group, r.gvr.Version, r.gvr.Resource, r.opType)
 	// descriptor
 	return definition.Descriptor{
 		Path:        *util.JoinWebHooksPath(constants.APIRootPath, r.gvr, r.opType),
@@ -133,7 +135,7 @@ func (r *framework) ToNirvanaDescriptor() definition.Descriptor {
 		Definitions: []definition.Definition{
 			{
 				Method:      definition.Create,
-				Description: fmt.Sprintf("do admission for %s", logBase),
+				Description: fmt.Sprintf("do admission for %s", handlerLogPrefix),
 				Consumes:    []string{definition.MIMEAll},
 				Produces:    []string{definition.MIMEJSON},
 				Parameters: []definition.Parameter{
@@ -148,10 +150,10 @@ func (r *framework) ToNirvanaDescriptor() definition.Descriptor {
 									gvk := admissionv1b1.SchemeGroupVersion.WithKind(reflect.TypeOf(ar).Name())
 									deserializer := scheme.Codecs.UniversalDeserializer()
 									if _, _, err := deserializer.Decode(body, &gvk, &ar); err != nil {
-										log.Errorf("%s decode AdmissionReview failed, %v", logBase, err)
-										ar.Response = util.ToAdmissionFailedResponse("", err)
+										log.Errorf("%s decode AdmissionReview failed, %v", handlerLogPrefix, err)
+										ar.Response = util.ToAdmissionFailedResponse("", errors.NewBadRequest(err))
 									} else {
-										log.DefaultLogger().Infof("%s decode AdmissionReview done: %s", logBase, string(body))
+										log.DefaultLogger().Infof("%s decode AdmissionReview done: %s", handlerLogPrefix, string(body))
 									}
 									return &ar, nil
 								}),
@@ -168,32 +170,28 @@ func (r *framework) ToNirvanaDescriptor() definition.Descriptor {
 					}
 					if ar.Request == nil {
 						e := fmt.Errorf("empty AdmissionReview Request")
-						log.Errorf("%s check AdmissionReview failed, %v", logBase, e)
-						ar.Response = util.ToAdmissionFailedResponse("", e)
+						log.Errorf("%s check AdmissionReview failed, %v", handlerLogPrefix, e)
+						ar.Response = util.ToAdmissionFailedResponse("", errors.NewBadRequest(e))
 						return ar
 					}
 					// parse raw
-					logPrefix := fmt.Sprintf("%s[%s/%s]", logBase, ar.Request.Namespace, ar.Request.Name)
+					logPrefix := util.AdmissionRequestLogBase(ar.Request)
 					log.DefaultLogger().Infof("%s start", logPrefix)
 					org, e := r.parser(&ar.Request.Object)
-					if e != nil {
+					if e != nil && r.opType != arv1b1.Delete {
 						log.Errorf("%s RawExtensionParser failed, %v", logPrefix, e)
-						ar.Response = util.ToAdmissionFailedResponse(ar.Request.UID, e)
+						ar.Response = util.ToAdmissionFailedResponse(ar.Request.UID, errors.NewBadRequest(e))
 						return ar
 					}
 					log.DefaultLogger().Infof("%s RawExtensionParser done", logPrefix)
 					// context
 					ctx = util.SetContextLogBase(ctx, logPrefix)
-					ctx = util.SetContextOpType(ctx, r.opType)
-					if r.opType != arv1b1.Create {
-						if interfaces.IsNil(ar.Request.OldObject.Object) && len(ar.Request.OldObject.Raw) == 0 {
-							log.Warningf("%s old object empty", logPrefix)
-						} else {
-							ctx = util.SetContextOldObject(ctx, ar.Request.OldObject.DeepCopy())
-						}
-					}
+					ctx = util.SetContextAdmissionRequest(ctx, ar.Request.DeepCopy())
 					// do review
-					obj := org.DeepCopyObject()
+					var obj runtime.Object
+					if org != nil {
+						obj = org.DeepCopyObject()
+					}
 					cost, e := r.reviewer.DoReview(ctx, &r.tracer, obj)
 					if e != nil {
 						ar.Response = util.ToAdmissionFailedResponse(ar.Request.UID, e)

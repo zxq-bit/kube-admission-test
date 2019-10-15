@@ -105,29 +105,31 @@ func (h *{{.KindName}}Handler) Register(in interface{}) error {
 
 func (h *{{.KindName}}Handler) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
 	return tracer.DoWithTracing(func() (err error) {
+		// log prepare
+		logBase := util.GetContextLogBase(ctx)
 		// check
-		if interfaces.IsNil(in) {
-			return errors.ErrNilRuntimeObject
-		}
-		obj := in.(*{{.PkgName}}.{{.KindName}})
-		if obj == nil {
-			return errors.ErrRuntimeObjectBadType
+		obj := func() *{{.PkgName}}.{{.KindName}} {
+			if interfaces.IsNil(in) {
+				return nil
+			}
+			return in.(*{{.PkgName}}.{{.KindName}})
+		}()
+		toFilter := obj
+		if toFilter == nil {
+			toFilter, err = GetContextOld{{.KindName}}(ctx)
+			if err != nil {
+				err = errors.ErrWrongRuntimeObjects
+				log.Errorf("%s DoReview failed, %v", logBase, err)
+				return errors.NewBadRequest(err)
+			}
 		}
 		// cleanup
 		defer util.RemoveObjectAnno(obj, constants.AnnoKeyAdmissionIgnore)
-		// log prepare
-		logBase := util.GetContextLogBase(ctx)
-		if logBase == "" {
-			logBase = fmt.Sprintf("[%v/%v/%v]", {{.ResourceName}}GVR.Group, {{.ResourceName}}GVR.Version, {{.ResourceName}}GVR.Resource)
-			if opType := util.GetContextOpType(ctx); opType != "" {
-				logBase += fmt.Sprintf("[%v]", opType)
-			}
-		}
 		// execute processors
 		for i, p := range h.processors {
 			logPrefix := logBase + fmt.Sprintf("[%d][%s]", i, p.LogPrefix())
 			// check ignore
-			if ignoreReason := h.objFilters[i](obj); ignoreReason != nil {
+			if ignoreReason := h.objFilters[i](toFilter); ignoreReason != nil {
 				log.Infof("%s skip for %s", logPrefix, *ignoreReason)
 				continue
 			}
@@ -139,7 +141,11 @@ func (h *{{.KindName}}Handler) DoReview(ctx context.Context, tracer *tracer.Trac
 			default:
 				switch p.Type {
 				case constants.ProcessorTypeValidate: // do without changes
-					cost, err = p.DoWithTracing(ctx, obj.DeepCopy())
+					var toValidate *{{.PkgName}}.{{.KindName}}
+					if obj != nil {
+						toValidate = obj.DeepCopy()
+					}
+					cost, err = p.DoWithTracing(ctx, toValidate)
 				case constants.ProcessorTypeMutate:
 					cost, err = p.DoWithTracing(ctx, obj)
 				default:
@@ -165,7 +171,7 @@ func {{.ResourceName}}RawExtensionParser(raw *runtime.RawExtension) (*{{.PkgName
 			return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), {{.ResourceName}}GVK.String())
 		}
 		if obj := raw.Object.(*{{.PkgName}}.{{.KindName}}); obj != nil {
-			return obj, nil
+			return obj.DeepCopy(), nil
 		}
 	}
 	parsed := &{{.PkgName}}.{{.KindName}}{}

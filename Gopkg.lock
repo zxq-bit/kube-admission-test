@@ -127,12 +127,13 @@
 
 [[projects]]
   branch = "release-0.2"
-  digest = "1:75e1d977bf9b1e72397648de56e3c02c11d7c06de2a47f22ad18accd6d888352"
+  digest = "1:e45434da92a5225d23ec1826faa8b62f79f71531a4eb631f18510312e190622b"
   name = "github.com/caicloud/go-common"
   packages = [
     "cert",
     "interfaces",
     "kubernetes/errors",
+    "kubernetes/meta",
     "nirvana/middleware",
     "slice",
   ]
@@ -767,6 +768,7 @@
     "github.com/caicloud/go-common/cert",
     "github.com/caicloud/go-common/interfaces",
     "github.com/caicloud/go-common/kubernetes/errors",
+    "github.com/caicloud/go-common/kubernetes/meta",
     "github.com/caicloud/go-common/nirvana/middleware",
     "github.com/caicloud/go-common/slice",
     "github.com/caicloud/nirvana",

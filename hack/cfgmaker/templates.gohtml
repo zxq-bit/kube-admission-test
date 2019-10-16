@@ -201,7 +201,11 @@ func (h *{{.KindName}}Handler) DoAdmit(ctx context.Context, tracer *tracer.Trace
 					}
 					cost, ke = p.DoWithTracing(ctx, toValidate)
 				case constants.ProcessorTypeMutate:
-					cost, ke = p.DoWithTracing(ctx, obj)
+					var backup *{{.PkgName}}.{{.KindName}}
+					if obj != nil {
+						backup = obj.DeepCopy()
+					}
+					cost, ke = p.DoWithTracing(SetContext{{.KindName}}Backup(ctx, backup), obj)
 				default:
 					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
 				}
@@ -243,6 +247,22 @@ func GetContextOld{{.KindName}}(ctx context.Context) (*{{.PkgName}}.{{.KindName}
 		return nil, nil
 	}
 	return {{.ResourceName}}RawExtensionParser(raw)
+}
+
+// SetContext{{.KindName}}Backup set {{.KindName}} backup object to Context
+func SetContext{{.KindName}}Backup(ctx context.Context, backup *{{.PkgName}}.{{.KindName}}) context.Context {
+	return context.WithValue(ctx, constants.ContextKeyObjectBackup, backup)
+}
+
+// GetContext{{.KindName}}Backup get {{.KindName}} backup object from Context
+func GetContext{{.KindName}}Backup(ctx context.Context) *{{.PkgName}}.{{.KindName}} {
+	if interfaces.IsNil(ctx) {
+		return nil
+	}
+	if raw := ctx.Value(constants.ContextKeyObjectBackup); raw != nil {
+		return raw.(*{{.PkgName}}.{{.KindName}})
+	}
+	return nil
 }
 
 {{- end }}

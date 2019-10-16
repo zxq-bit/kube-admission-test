@@ -253,7 +253,11 @@ func (h *PodHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runt
 					}
 					cost, ke = p.DoWithTracing(ctx, toValidate)
 				case constants.ProcessorTypeMutate:
-					cost, ke = p.DoWithTracing(ctx, obj)
+					var backup *corev1.Pod
+					if obj != nil {
+						backup = obj.DeepCopy()
+					}
+					cost, ke = p.DoWithTracing(SetContextPodBackup(ctx, backup), obj)
 				default:
 					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
 				}
@@ -295,6 +299,22 @@ func GetContextOldPod(ctx context.Context) (*corev1.Pod, error) {
 		return nil, nil
 	}
 	return podsRawExtensionParser(raw)
+}
+
+// SetContextPodBackup set Pod backup object to Context
+func SetContextPodBackup(ctx context.Context, backup *corev1.Pod) context.Context {
+	return context.WithValue(ctx, constants.ContextKeyObjectBackup, backup)
+}
+
+// GetContextPodBackup get Pod backup object from Context
+func GetContextPodBackup(ctx context.Context) *corev1.Pod {
+	if interfaces.IsNil(ctx) {
+		return nil
+	}
+	if raw := ctx.Value(constants.ContextKeyObjectBackup); raw != nil {
+		return raw.(*corev1.Pod)
+	}
+	return nil
 }
 
 // configmaps about
@@ -426,7 +446,11 @@ func (h *ConfigMapHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, i
 					}
 					cost, ke = p.DoWithTracing(ctx, toValidate)
 				case constants.ProcessorTypeMutate:
-					cost, ke = p.DoWithTracing(ctx, obj)
+					var backup *corev1.ConfigMap
+					if obj != nil {
+						backup = obj.DeepCopy()
+					}
+					cost, ke = p.DoWithTracing(SetContextConfigMapBackup(ctx, backup), obj)
 				default:
 					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
 				}
@@ -468,6 +492,22 @@ func GetContextOldConfigMap(ctx context.Context) (*corev1.ConfigMap, error) {
 		return nil, nil
 	}
 	return configmapsRawExtensionParser(raw)
+}
+
+// SetContextConfigMapBackup set ConfigMap backup object to Context
+func SetContextConfigMapBackup(ctx context.Context, backup *corev1.ConfigMap) context.Context {
+	return context.WithValue(ctx, constants.ContextKeyObjectBackup, backup)
+}
+
+// GetContextConfigMapBackup get ConfigMap backup object from Context
+func GetContextConfigMapBackup(ctx context.Context) *corev1.ConfigMap {
+	if interfaces.IsNil(ctx) {
+		return nil
+	}
+	if raw := ctx.Value(constants.ContextKeyObjectBackup); raw != nil {
+		return raw.(*corev1.ConfigMap)
+	}
+	return nil
 }
 
 // secrets about
@@ -599,7 +639,11 @@ func (h *SecretHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in r
 					}
 					cost, ke = p.DoWithTracing(ctx, toValidate)
 				case constants.ProcessorTypeMutate:
-					cost, ke = p.DoWithTracing(ctx, obj)
+					var backup *corev1.Secret
+					if obj != nil {
+						backup = obj.DeepCopy()
+					}
+					cost, ke = p.DoWithTracing(SetContextSecretBackup(ctx, backup), obj)
 				default:
 					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
 				}
@@ -641,6 +685,22 @@ func GetContextOldSecret(ctx context.Context) (*corev1.Secret, error) {
 		return nil, nil
 	}
 	return secretsRawExtensionParser(raw)
+}
+
+// SetContextSecretBackup set Secret backup object to Context
+func SetContextSecretBackup(ctx context.Context, backup *corev1.Secret) context.Context {
+	return context.WithValue(ctx, constants.ContextKeyObjectBackup, backup)
+}
+
+// GetContextSecretBackup get Secret backup object from Context
+func GetContextSecretBackup(ctx context.Context) *corev1.Secret {
+	if interfaces.IsNil(ctx) {
+		return nil
+	}
+	if raw := ctx.Value(constants.ContextKeyObjectBackup); raw != nil {
+		return raw.(*corev1.Secret)
+	}
+	return nil
 }
 
 // services about
@@ -772,7 +832,11 @@ func (h *ServiceHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in 
 					}
 					cost, ke = p.DoWithTracing(ctx, toValidate)
 				case constants.ProcessorTypeMutate:
-					cost, ke = p.DoWithTracing(ctx, obj)
+					var backup *corev1.Service
+					if obj != nil {
+						backup = obj.DeepCopy()
+					}
+					cost, ke = p.DoWithTracing(SetContextServiceBackup(ctx, backup), obj)
 				default:
 					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
 				}
@@ -814,6 +878,22 @@ func GetContextOldService(ctx context.Context) (*corev1.Service, error) {
 		return nil, nil
 	}
 	return servicesRawExtensionParser(raw)
+}
+
+// SetContextServiceBackup set Service backup object to Context
+func SetContextServiceBackup(ctx context.Context, backup *corev1.Service) context.Context {
+	return context.WithValue(ctx, constants.ContextKeyObjectBackup, backup)
+}
+
+// GetContextServiceBackup get Service backup object from Context
+func GetContextServiceBackup(ctx context.Context) *corev1.Service {
+	if interfaces.IsNil(ctx) {
+		return nil
+	}
+	if raw := ctx.Value(constants.ContextKeyObjectBackup); raw != nil {
+		return raw.(*corev1.Service)
+	}
+	return nil
 }
 
 // persistentvolumeclaims about
@@ -945,7 +1025,11 @@ func (h *PersistentVolumeClaimHandler) DoAdmit(ctx context.Context, tracer *trac
 					}
 					cost, ke = p.DoWithTracing(ctx, toValidate)
 				case constants.ProcessorTypeMutate:
-					cost, ke = p.DoWithTracing(ctx, obj)
+					var backup *corev1.PersistentVolumeClaim
+					if obj != nil {
+						backup = obj.DeepCopy()
+					}
+					cost, ke = p.DoWithTracing(SetContextPersistentVolumeClaimBackup(ctx, backup), obj)
 				default:
 					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
 				}
@@ -987,6 +1071,22 @@ func GetContextOldPersistentVolumeClaim(ctx context.Context) (*corev1.Persistent
 		return nil, nil
 	}
 	return persistentvolumeclaimsRawExtensionParser(raw)
+}
+
+// SetContextPersistentVolumeClaimBackup set PersistentVolumeClaim backup object to Context
+func SetContextPersistentVolumeClaimBackup(ctx context.Context, backup *corev1.PersistentVolumeClaim) context.Context {
+	return context.WithValue(ctx, constants.ContextKeyObjectBackup, backup)
+}
+
+// GetContextPersistentVolumeClaimBackup get PersistentVolumeClaim backup object from Context
+func GetContextPersistentVolumeClaimBackup(ctx context.Context) *corev1.PersistentVolumeClaim {
+	if interfaces.IsNil(ctx) {
+		return nil
+	}
+	if raw := ctx.Value(constants.ContextKeyObjectBackup); raw != nil {
+		return raw.(*corev1.PersistentVolumeClaim)
+	}
+	return nil
 }
 
 // persistentvolumes about
@@ -1118,7 +1218,11 @@ func (h *PersistentVolumeHandler) DoAdmit(ctx context.Context, tracer *tracer.Tr
 					}
 					cost, ke = p.DoWithTracing(ctx, toValidate)
 				case constants.ProcessorTypeMutate:
-					cost, ke = p.DoWithTracing(ctx, obj)
+					var backup *corev1.PersistentVolume
+					if obj != nil {
+						backup = obj.DeepCopy()
+					}
+					cost, ke = p.DoWithTracing(SetContextPersistentVolumeBackup(ctx, backup), obj)
 				default:
 					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
 				}
@@ -1160,6 +1264,22 @@ func GetContextOldPersistentVolume(ctx context.Context) (*corev1.PersistentVolum
 		return nil, nil
 	}
 	return persistentvolumesRawExtensionParser(raw)
+}
+
+// SetContextPersistentVolumeBackup set PersistentVolume backup object to Context
+func SetContextPersistentVolumeBackup(ctx context.Context, backup *corev1.PersistentVolume) context.Context {
+	return context.WithValue(ctx, constants.ContextKeyObjectBackup, backup)
+}
+
+// GetContextPersistentVolumeBackup get PersistentVolume backup object from Context
+func GetContextPersistentVolumeBackup(ctx context.Context) *corev1.PersistentVolume {
+	if interfaces.IsNil(ctx) {
+		return nil
+	}
+	if raw := ctx.Value(constants.ContextKeyObjectBackup); raw != nil {
+		return raw.(*corev1.PersistentVolume)
+	}
+	return nil
 }
 
 // daemonsets about
@@ -1291,7 +1411,11 @@ func (h *DaemonSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, i
 					}
 					cost, ke = p.DoWithTracing(ctx, toValidate)
 				case constants.ProcessorTypeMutate:
-					cost, ke = p.DoWithTracing(ctx, obj)
+					var backup *appsv1.DaemonSet
+					if obj != nil {
+						backup = obj.DeepCopy()
+					}
+					cost, ke = p.DoWithTracing(SetContextDaemonSetBackup(ctx, backup), obj)
 				default:
 					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
 				}
@@ -1333,6 +1457,22 @@ func GetContextOldDaemonSet(ctx context.Context) (*appsv1.DaemonSet, error) {
 		return nil, nil
 	}
 	return daemonsetsRawExtensionParser(raw)
+}
+
+// SetContextDaemonSetBackup set DaemonSet backup object to Context
+func SetContextDaemonSetBackup(ctx context.Context, backup *appsv1.DaemonSet) context.Context {
+	return context.WithValue(ctx, constants.ContextKeyObjectBackup, backup)
+}
+
+// GetContextDaemonSetBackup get DaemonSet backup object from Context
+func GetContextDaemonSetBackup(ctx context.Context) *appsv1.DaemonSet {
+	if interfaces.IsNil(ctx) {
+		return nil
+	}
+	if raw := ctx.Value(constants.ContextKeyObjectBackup); raw != nil {
+		return raw.(*appsv1.DaemonSet)
+	}
+	return nil
 }
 
 // deployments about
@@ -1464,7 +1604,11 @@ func (h *DeploymentHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, 
 					}
 					cost, ke = p.DoWithTracing(ctx, toValidate)
 				case constants.ProcessorTypeMutate:
-					cost, ke = p.DoWithTracing(ctx, obj)
+					var backup *appsv1.Deployment
+					if obj != nil {
+						backup = obj.DeepCopy()
+					}
+					cost, ke = p.DoWithTracing(SetContextDeploymentBackup(ctx, backup), obj)
 				default:
 					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
 				}
@@ -1506,6 +1650,22 @@ func GetContextOldDeployment(ctx context.Context) (*appsv1.Deployment, error) {
 		return nil, nil
 	}
 	return deploymentsRawExtensionParser(raw)
+}
+
+// SetContextDeploymentBackup set Deployment backup object to Context
+func SetContextDeploymentBackup(ctx context.Context, backup *appsv1.Deployment) context.Context {
+	return context.WithValue(ctx, constants.ContextKeyObjectBackup, backup)
+}
+
+// GetContextDeploymentBackup get Deployment backup object from Context
+func GetContextDeploymentBackup(ctx context.Context) *appsv1.Deployment {
+	if interfaces.IsNil(ctx) {
+		return nil
+	}
+	if raw := ctx.Value(constants.ContextKeyObjectBackup); raw != nil {
+		return raw.(*appsv1.Deployment)
+	}
+	return nil
 }
 
 // replicasets about
@@ -1637,7 +1797,11 @@ func (h *ReplicaSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, 
 					}
 					cost, ke = p.DoWithTracing(ctx, toValidate)
 				case constants.ProcessorTypeMutate:
-					cost, ke = p.DoWithTracing(ctx, obj)
+					var backup *appsv1.ReplicaSet
+					if obj != nil {
+						backup = obj.DeepCopy()
+					}
+					cost, ke = p.DoWithTracing(SetContextReplicaSetBackup(ctx, backup), obj)
 				default:
 					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
 				}
@@ -1679,6 +1843,22 @@ func GetContextOldReplicaSet(ctx context.Context) (*appsv1.ReplicaSet, error) {
 		return nil, nil
 	}
 	return replicasetsRawExtensionParser(raw)
+}
+
+// SetContextReplicaSetBackup set ReplicaSet backup object to Context
+func SetContextReplicaSetBackup(ctx context.Context, backup *appsv1.ReplicaSet) context.Context {
+	return context.WithValue(ctx, constants.ContextKeyObjectBackup, backup)
+}
+
+// GetContextReplicaSetBackup get ReplicaSet backup object from Context
+func GetContextReplicaSetBackup(ctx context.Context) *appsv1.ReplicaSet {
+	if interfaces.IsNil(ctx) {
+		return nil
+	}
+	if raw := ctx.Value(constants.ContextKeyObjectBackup); raw != nil {
+		return raw.(*appsv1.ReplicaSet)
+	}
+	return nil
 }
 
 // statefulsets about
@@ -1810,7 +1990,11 @@ func (h *StatefulSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer,
 					}
 					cost, ke = p.DoWithTracing(ctx, toValidate)
 				case constants.ProcessorTypeMutate:
-					cost, ke = p.DoWithTracing(ctx, obj)
+					var backup *appsv1.StatefulSet
+					if obj != nil {
+						backup = obj.DeepCopy()
+					}
+					cost, ke = p.DoWithTracing(SetContextStatefulSetBackup(ctx, backup), obj)
 				default:
 					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
 				}
@@ -1852,6 +2036,22 @@ func GetContextOldStatefulSet(ctx context.Context) (*appsv1.StatefulSet, error) 
 		return nil, nil
 	}
 	return statefulsetsRawExtensionParser(raw)
+}
+
+// SetContextStatefulSetBackup set StatefulSet backup object to Context
+func SetContextStatefulSetBackup(ctx context.Context, backup *appsv1.StatefulSet) context.Context {
+	return context.WithValue(ctx, constants.ContextKeyObjectBackup, backup)
+}
+
+// GetContextStatefulSetBackup get StatefulSet backup object from Context
+func GetContextStatefulSetBackup(ctx context.Context) *appsv1.StatefulSet {
+	if interfaces.IsNil(ctx) {
+		return nil
+	}
+	if raw := ctx.Value(constants.ContextKeyObjectBackup); raw != nil {
+		return raw.(*appsv1.StatefulSet)
+	}
+	return nil
 }
 
 // workloads about
@@ -1983,7 +2183,11 @@ func (h *WorkloadHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in
 					}
 					cost, ke = p.DoWithTracing(ctx, toValidate)
 				case constants.ProcessorTypeMutate:
-					cost, ke = p.DoWithTracing(ctx, obj)
+					var backup *wklv1a1.Workload
+					if obj != nil {
+						backup = obj.DeepCopy()
+					}
+					cost, ke = p.DoWithTracing(SetContextWorkloadBackup(ctx, backup), obj)
 				default:
 					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
 				}
@@ -2025,4 +2229,20 @@ func GetContextOldWorkload(ctx context.Context) (*wklv1a1.Workload, error) {
 		return nil, nil
 	}
 	return workloadsRawExtensionParser(raw)
+}
+
+// SetContextWorkloadBackup set Workload backup object to Context
+func SetContextWorkloadBackup(ctx context.Context, backup *wklv1a1.Workload) context.Context {
+	return context.WithValue(ctx, constants.ContextKeyObjectBackup, backup)
+}
+
+// GetContextWorkloadBackup get Workload backup object from Context
+func GetContextWorkloadBackup(ctx context.Context) *wklv1a1.Workload {
+	if interfaces.IsNil(ctx) {
+		return nil
+	}
+	if raw := ctx.Value(constants.ContextKeyObjectBackup); raw != nil {
+		return raw.(*wklv1a1.Workload)
+	}
+	return nil
 }

@@ -58,4 +58,5 @@ type ContextKey string
 const (
 	ContextKeyLogBase          ContextKey = "logBase"
 	ContextKeyAdmissionRequest ContextKey = "admissionRequest"
+	ContextKeyObjectBackup     ContextKey = "objectBackup"
 )

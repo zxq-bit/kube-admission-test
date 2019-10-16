@@ -67,9 +67,8 @@ func getContextAdmissionRequest(ctx context.Context) *admissionv1b1.AdmissionReq
 	if interfaces.IsNil(ctx) {
 		return nil
 	}
-	raw := ctx.Value(constants.ContextKeyAdmissionRequest)
-	if raw == nil {
-		return nil
+	if raw := ctx.Value(constants.ContextKeyAdmissionRequest); raw != nil {
+		return raw.(*admissionv1b1.AdmissionRequest)
 	}
-	return raw.(*admissionv1b1.AdmissionRequest)
+	return nil
 }

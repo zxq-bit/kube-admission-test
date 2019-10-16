@@ -132,7 +132,9 @@ type PodProcessor struct {
 	// Tracer, do performance tracking
 	Tracer tracer.Tracer
 	// Admit do admit, return error if should stop
-	Admit func(ctx context.Context, in *corev1.Pod) errors.APIStatus
+	Admit func(ctx context.Context, in *corev1.Pod) *errors.StatusError
+	// Recover do recover if func Admit panic, return error if should stop
+	Recover func(ctx context.Context, pr interface{}) *errors.StatusError
 }
 
 type PodHandler struct {
@@ -152,9 +154,21 @@ func (p *PodProcessor) Validate() error {
 	return nil
 }
 
-func (p *PodProcessor) DoWithTracing(ctx context.Context, in *corev1.Pod) (cost time.Duration, ke errors.APIStatus) {
-	return p.Tracer.DoWithTracing(func() errors.APIStatus {
-		return p.Admit(ctx, in)
+func (p *PodProcessor) DoWithTracing(ctx context.Context, in *corev1.Pod) (cost time.Duration, ke *errors.StatusError) {
+	return p.Tracer.DoWithTracing(func() (re *errors.StatusError) {
+		defer func() {
+			pr := recover()
+			if pr == nil {
+				return
+			}
+			if p.Recover != nil {
+				re = p.Recover(ctx, pr)
+			} else {
+				re = errors.NewInternalServerError(fmt.Errorf("%v", p))
+			}
+		}()
+		re = p.Admit(ctx, in)
+		return
 	})
 }
 
@@ -194,8 +208,8 @@ func (h *PodHandler) Register(in interface{}) error {
 	return nil
 }
 
-func (h *PodHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke errors.APIStatus) {
-	return tracer.DoWithTracing(func() (ke errors.APIStatus) {
+func (h *PodHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke *errors.StatusError) {
+	return tracer.DoWithTracing(func() (ke *errors.StatusError) {
 		// log prepare
 		logBase := util.GetContextLogBase(ctx)
 		// check
@@ -245,7 +259,7 @@ func (h *PodHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runt
 				}
 			}
 			if ke != nil {
-				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke)
+				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke.Error())
 				break
 			}
 			log.Infof("%s[cost:%v] done", logPrefix, cost)
@@ -291,7 +305,9 @@ type ConfigMapProcessor struct {
 	// Tracer, do performance tracking
 	Tracer tracer.Tracer
 	// Admit do admit, return error if should stop
-	Admit func(ctx context.Context, in *corev1.ConfigMap) errors.APIStatus
+	Admit func(ctx context.Context, in *corev1.ConfigMap) *errors.StatusError
+	// Recover do recover if func Admit panic, return error if should stop
+	Recover func(ctx context.Context, pr interface{}) *errors.StatusError
 }
 
 type ConfigMapHandler struct {
@@ -311,9 +327,21 @@ func (p *ConfigMapProcessor) Validate() error {
 	return nil
 }
 
-func (p *ConfigMapProcessor) DoWithTracing(ctx context.Context, in *corev1.ConfigMap) (cost time.Duration, ke errors.APIStatus) {
-	return p.Tracer.DoWithTracing(func() errors.APIStatus {
-		return p.Admit(ctx, in)
+func (p *ConfigMapProcessor) DoWithTracing(ctx context.Context, in *corev1.ConfigMap) (cost time.Duration, ke *errors.StatusError) {
+	return p.Tracer.DoWithTracing(func() (re *errors.StatusError) {
+		defer func() {
+			pr := recover()
+			if pr == nil {
+				return
+			}
+			if p.Recover != nil {
+				re = p.Recover(ctx, pr)
+			} else {
+				re = errors.NewInternalServerError(fmt.Errorf("%v", p))
+			}
+		}()
+		re = p.Admit(ctx, in)
+		return
 	})
 }
 
@@ -353,8 +381,8 @@ func (h *ConfigMapHandler) Register(in interface{}) error {
 	return nil
 }
 
-func (h *ConfigMapHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke errors.APIStatus) {
-	return tracer.DoWithTracing(func() (ke errors.APIStatus) {
+func (h *ConfigMapHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke *errors.StatusError) {
+	return tracer.DoWithTracing(func() (ke *errors.StatusError) {
 		// log prepare
 		logBase := util.GetContextLogBase(ctx)
 		// check
@@ -404,7 +432,7 @@ func (h *ConfigMapHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, i
 				}
 			}
 			if ke != nil {
-				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke)
+				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke.Error())
 				break
 			}
 			log.Infof("%s[cost:%v] done", logPrefix, cost)
@@ -450,7 +478,9 @@ type SecretProcessor struct {
 	// Tracer, do performance tracking
 	Tracer tracer.Tracer
 	// Admit do admit, return error if should stop
-	Admit func(ctx context.Context, in *corev1.Secret) errors.APIStatus
+	Admit func(ctx context.Context, in *corev1.Secret) *errors.StatusError
+	// Recover do recover if func Admit panic, return error if should stop
+	Recover func(ctx context.Context, pr interface{}) *errors.StatusError
 }
 
 type SecretHandler struct {
@@ -470,9 +500,21 @@ func (p *SecretProcessor) Validate() error {
 	return nil
 }
 
-func (p *SecretProcessor) DoWithTracing(ctx context.Context, in *corev1.Secret) (cost time.Duration, ke errors.APIStatus) {
-	return p.Tracer.DoWithTracing(func() errors.APIStatus {
-		return p.Admit(ctx, in)
+func (p *SecretProcessor) DoWithTracing(ctx context.Context, in *corev1.Secret) (cost time.Duration, ke *errors.StatusError) {
+	return p.Tracer.DoWithTracing(func() (re *errors.StatusError) {
+		defer func() {
+			pr := recover()
+			if pr == nil {
+				return
+			}
+			if p.Recover != nil {
+				re = p.Recover(ctx, pr)
+			} else {
+				re = errors.NewInternalServerError(fmt.Errorf("%v", p))
+			}
+		}()
+		re = p.Admit(ctx, in)
+		return
 	})
 }
 
@@ -512,8 +554,8 @@ func (h *SecretHandler) Register(in interface{}) error {
 	return nil
 }
 
-func (h *SecretHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke errors.APIStatus) {
-	return tracer.DoWithTracing(func() (ke errors.APIStatus) {
+func (h *SecretHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke *errors.StatusError) {
+	return tracer.DoWithTracing(func() (ke *errors.StatusError) {
 		// log prepare
 		logBase := util.GetContextLogBase(ctx)
 		// check
@@ -563,7 +605,7 @@ func (h *SecretHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in r
 				}
 			}
 			if ke != nil {
-				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke)
+				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke.Error())
 				break
 			}
 			log.Infof("%s[cost:%v] done", logPrefix, cost)
@@ -609,7 +651,9 @@ type ServiceProcessor struct {
 	// Tracer, do performance tracking
 	Tracer tracer.Tracer
 	// Admit do admit, return error if should stop
-	Admit func(ctx context.Context, in *corev1.Service) errors.APIStatus
+	Admit func(ctx context.Context, in *corev1.Service) *errors.StatusError
+	// Recover do recover if func Admit panic, return error if should stop
+	Recover func(ctx context.Context, pr interface{}) *errors.StatusError
 }
 
 type ServiceHandler struct {
@@ -629,9 +673,21 @@ func (p *ServiceProcessor) Validate() error {
 	return nil
 }
 
-func (p *ServiceProcessor) DoWithTracing(ctx context.Context, in *corev1.Service) (cost time.Duration, ke errors.APIStatus) {
-	return p.Tracer.DoWithTracing(func() errors.APIStatus {
-		return p.Admit(ctx, in)
+func (p *ServiceProcessor) DoWithTracing(ctx context.Context, in *corev1.Service) (cost time.Duration, ke *errors.StatusError) {
+	return p.Tracer.DoWithTracing(func() (re *errors.StatusError) {
+		defer func() {
+			pr := recover()
+			if pr == nil {
+				return
+			}
+			if p.Recover != nil {
+				re = p.Recover(ctx, pr)
+			} else {
+				re = errors.NewInternalServerError(fmt.Errorf("%v", p))
+			}
+		}()
+		re = p.Admit(ctx, in)
+		return
 	})
 }
 
@@ -671,8 +727,8 @@ func (h *ServiceHandler) Register(in interface{}) error {
 	return nil
 }
 
-func (h *ServiceHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke errors.APIStatus) {
-	return tracer.DoWithTracing(func() (ke errors.APIStatus) {
+func (h *ServiceHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke *errors.StatusError) {
+	return tracer.DoWithTracing(func() (ke *errors.StatusError) {
 		// log prepare
 		logBase := util.GetContextLogBase(ctx)
 		// check
@@ -722,7 +778,7 @@ func (h *ServiceHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in 
 				}
 			}
 			if ke != nil {
-				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke)
+				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke.Error())
 				break
 			}
 			log.Infof("%s[cost:%v] done", logPrefix, cost)
@@ -768,7 +824,9 @@ type PersistentVolumeClaimProcessor struct {
 	// Tracer, do performance tracking
 	Tracer tracer.Tracer
 	// Admit do admit, return error if should stop
-	Admit func(ctx context.Context, in *corev1.PersistentVolumeClaim) errors.APIStatus
+	Admit func(ctx context.Context, in *corev1.PersistentVolumeClaim) *errors.StatusError
+	// Recover do recover if func Admit panic, return error if should stop
+	Recover func(ctx context.Context, pr interface{}) *errors.StatusError
 }
 
 type PersistentVolumeClaimHandler struct {
@@ -788,9 +846,21 @@ func (p *PersistentVolumeClaimProcessor) Validate() error {
 	return nil
 }
 
-func (p *PersistentVolumeClaimProcessor) DoWithTracing(ctx context.Context, in *corev1.PersistentVolumeClaim) (cost time.Duration, ke errors.APIStatus) {
-	return p.Tracer.DoWithTracing(func() errors.APIStatus {
-		return p.Admit(ctx, in)
+func (p *PersistentVolumeClaimProcessor) DoWithTracing(ctx context.Context, in *corev1.PersistentVolumeClaim) (cost time.Duration, ke *errors.StatusError) {
+	return p.Tracer.DoWithTracing(func() (re *errors.StatusError) {
+		defer func() {
+			pr := recover()
+			if pr == nil {
+				return
+			}
+			if p.Recover != nil {
+				re = p.Recover(ctx, pr)
+			} else {
+				re = errors.NewInternalServerError(fmt.Errorf("%v", p))
+			}
+		}()
+		re = p.Admit(ctx, in)
+		return
 	})
 }
 
@@ -830,8 +900,8 @@ func (h *PersistentVolumeClaimHandler) Register(in interface{}) error {
 	return nil
 }
 
-func (h *PersistentVolumeClaimHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke errors.APIStatus) {
-	return tracer.DoWithTracing(func() (ke errors.APIStatus) {
+func (h *PersistentVolumeClaimHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke *errors.StatusError) {
+	return tracer.DoWithTracing(func() (ke *errors.StatusError) {
 		// log prepare
 		logBase := util.GetContextLogBase(ctx)
 		// check
@@ -881,7 +951,7 @@ func (h *PersistentVolumeClaimHandler) DoAdmit(ctx context.Context, tracer *trac
 				}
 			}
 			if ke != nil {
-				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke)
+				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke.Error())
 				break
 			}
 			log.Infof("%s[cost:%v] done", logPrefix, cost)
@@ -927,7 +997,9 @@ type PersistentVolumeProcessor struct {
 	// Tracer, do performance tracking
 	Tracer tracer.Tracer
 	// Admit do admit, return error if should stop
-	Admit func(ctx context.Context, in *corev1.PersistentVolume) errors.APIStatus
+	Admit func(ctx context.Context, in *corev1.PersistentVolume) *errors.StatusError
+	// Recover do recover if func Admit panic, return error if should stop
+	Recover func(ctx context.Context, pr interface{}) *errors.StatusError
 }
 
 type PersistentVolumeHandler struct {
@@ -947,9 +1019,21 @@ func (p *PersistentVolumeProcessor) Validate() error {
 	return nil
 }
 
-func (p *PersistentVolumeProcessor) DoWithTracing(ctx context.Context, in *corev1.PersistentVolume) (cost time.Duration, ke errors.APIStatus) {
-	return p.Tracer.DoWithTracing(func() errors.APIStatus {
-		return p.Admit(ctx, in)
+func (p *PersistentVolumeProcessor) DoWithTracing(ctx context.Context, in *corev1.PersistentVolume) (cost time.Duration, ke *errors.StatusError) {
+	return p.Tracer.DoWithTracing(func() (re *errors.StatusError) {
+		defer func() {
+			pr := recover()
+			if pr == nil {
+				return
+			}
+			if p.Recover != nil {
+				re = p.Recover(ctx, pr)
+			} else {
+				re = errors.NewInternalServerError(fmt.Errorf("%v", p))
+			}
+		}()
+		re = p.Admit(ctx, in)
+		return
 	})
 }
 
@@ -989,8 +1073,8 @@ func (h *PersistentVolumeHandler) Register(in interface{}) error {
 	return nil
 }
 
-func (h *PersistentVolumeHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke errors.APIStatus) {
-	return tracer.DoWithTracing(func() (ke errors.APIStatus) {
+func (h *PersistentVolumeHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke *errors.StatusError) {
+	return tracer.DoWithTracing(func() (ke *errors.StatusError) {
 		// log prepare
 		logBase := util.GetContextLogBase(ctx)
 		// check
@@ -1040,7 +1124,7 @@ func (h *PersistentVolumeHandler) DoAdmit(ctx context.Context, tracer *tracer.Tr
 				}
 			}
 			if ke != nil {
-				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke)
+				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke.Error())
 				break
 			}
 			log.Infof("%s[cost:%v] done", logPrefix, cost)
@@ -1086,7 +1170,9 @@ type DaemonSetProcessor struct {
 	// Tracer, do performance tracking
 	Tracer tracer.Tracer
 	// Admit do admit, return error if should stop
-	Admit func(ctx context.Context, in *appsv1.DaemonSet) errors.APIStatus
+	Admit func(ctx context.Context, in *appsv1.DaemonSet) *errors.StatusError
+	// Recover do recover if func Admit panic, return error if should stop
+	Recover func(ctx context.Context, pr interface{}) *errors.StatusError
 }
 
 type DaemonSetHandler struct {
@@ -1106,9 +1192,21 @@ func (p *DaemonSetProcessor) Validate() error {
 	return nil
 }
 
-func (p *DaemonSetProcessor) DoWithTracing(ctx context.Context, in *appsv1.DaemonSet) (cost time.Duration, ke errors.APIStatus) {
-	return p.Tracer.DoWithTracing(func() errors.APIStatus {
-		return p.Admit(ctx, in)
+func (p *DaemonSetProcessor) DoWithTracing(ctx context.Context, in *appsv1.DaemonSet) (cost time.Duration, ke *errors.StatusError) {
+	return p.Tracer.DoWithTracing(func() (re *errors.StatusError) {
+		defer func() {
+			pr := recover()
+			if pr == nil {
+				return
+			}
+			if p.Recover != nil {
+				re = p.Recover(ctx, pr)
+			} else {
+				re = errors.NewInternalServerError(fmt.Errorf("%v", p))
+			}
+		}()
+		re = p.Admit(ctx, in)
+		return
 	})
 }
 
@@ -1148,8 +1246,8 @@ func (h *DaemonSetHandler) Register(in interface{}) error {
 	return nil
 }
 
-func (h *DaemonSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke errors.APIStatus) {
-	return tracer.DoWithTracing(func() (ke errors.APIStatus) {
+func (h *DaemonSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke *errors.StatusError) {
+	return tracer.DoWithTracing(func() (ke *errors.StatusError) {
 		// log prepare
 		logBase := util.GetContextLogBase(ctx)
 		// check
@@ -1199,7 +1297,7 @@ func (h *DaemonSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, i
 				}
 			}
 			if ke != nil {
-				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke)
+				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke.Error())
 				break
 			}
 			log.Infof("%s[cost:%v] done", logPrefix, cost)
@@ -1245,7 +1343,9 @@ type DeploymentProcessor struct {
 	// Tracer, do performance tracking
 	Tracer tracer.Tracer
 	// Admit do admit, return error if should stop
-	Admit func(ctx context.Context, in *appsv1.Deployment) errors.APIStatus
+	Admit func(ctx context.Context, in *appsv1.Deployment) *errors.StatusError
+	// Recover do recover if func Admit panic, return error if should stop
+	Recover func(ctx context.Context, pr interface{}) *errors.StatusError
 }
 
 type DeploymentHandler struct {
@@ -1265,9 +1365,21 @@ func (p *DeploymentProcessor) Validate() error {
 	return nil
 }
 
-func (p *DeploymentProcessor) DoWithTracing(ctx context.Context, in *appsv1.Deployment) (cost time.Duration, ke errors.APIStatus) {
-	return p.Tracer.DoWithTracing(func() errors.APIStatus {
-		return p.Admit(ctx, in)
+func (p *DeploymentProcessor) DoWithTracing(ctx context.Context, in *appsv1.Deployment) (cost time.Duration, ke *errors.StatusError) {
+	return p.Tracer.DoWithTracing(func() (re *errors.StatusError) {
+		defer func() {
+			pr := recover()
+			if pr == nil {
+				return
+			}
+			if p.Recover != nil {
+				re = p.Recover(ctx, pr)
+			} else {
+				re = errors.NewInternalServerError(fmt.Errorf("%v", p))
+			}
+		}()
+		re = p.Admit(ctx, in)
+		return
 	})
 }
 
@@ -1307,8 +1419,8 @@ func (h *DeploymentHandler) Register(in interface{}) error {
 	return nil
 }
 
-func (h *DeploymentHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke errors.APIStatus) {
-	return tracer.DoWithTracing(func() (ke errors.APIStatus) {
+func (h *DeploymentHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke *errors.StatusError) {
+	return tracer.DoWithTracing(func() (ke *errors.StatusError) {
 		// log prepare
 		logBase := util.GetContextLogBase(ctx)
 		// check
@@ -1358,7 +1470,7 @@ func (h *DeploymentHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, 
 				}
 			}
 			if ke != nil {
-				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke)
+				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke.Error())
 				break
 			}
 			log.Infof("%s[cost:%v] done", logPrefix, cost)
@@ -1404,7 +1516,9 @@ type ReplicaSetProcessor struct {
 	// Tracer, do performance tracking
 	Tracer tracer.Tracer
 	// Admit do admit, return error if should stop
-	Admit func(ctx context.Context, in *appsv1.ReplicaSet) errors.APIStatus
+	Admit func(ctx context.Context, in *appsv1.ReplicaSet) *errors.StatusError
+	// Recover do recover if func Admit panic, return error if should stop
+	Recover func(ctx context.Context, pr interface{}) *errors.StatusError
 }
 
 type ReplicaSetHandler struct {
@@ -1424,9 +1538,21 @@ func (p *ReplicaSetProcessor) Validate() error {
 	return nil
 }
 
-func (p *ReplicaSetProcessor) DoWithTracing(ctx context.Context, in *appsv1.ReplicaSet) (cost time.Duration, ke errors.APIStatus) {
-	return p.Tracer.DoWithTracing(func() errors.APIStatus {
-		return p.Admit(ctx, in)
+func (p *ReplicaSetProcessor) DoWithTracing(ctx context.Context, in *appsv1.ReplicaSet) (cost time.Duration, ke *errors.StatusError) {
+	return p.Tracer.DoWithTracing(func() (re *errors.StatusError) {
+		defer func() {
+			pr := recover()
+			if pr == nil {
+				return
+			}
+			if p.Recover != nil {
+				re = p.Recover(ctx, pr)
+			} else {
+				re = errors.NewInternalServerError(fmt.Errorf("%v", p))
+			}
+		}()
+		re = p.Admit(ctx, in)
+		return
 	})
 }
 
@@ -1466,8 +1592,8 @@ func (h *ReplicaSetHandler) Register(in interface{}) error {
 	return nil
 }
 
-func (h *ReplicaSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke errors.APIStatus) {
-	return tracer.DoWithTracing(func() (ke errors.APIStatus) {
+func (h *ReplicaSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke *errors.StatusError) {
+	return tracer.DoWithTracing(func() (ke *errors.StatusError) {
 		// log prepare
 		logBase := util.GetContextLogBase(ctx)
 		// check
@@ -1517,7 +1643,7 @@ func (h *ReplicaSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, 
 				}
 			}
 			if ke != nil {
-				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke)
+				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke.Error())
 				break
 			}
 			log.Infof("%s[cost:%v] done", logPrefix, cost)
@@ -1563,7 +1689,9 @@ type StatefulSetProcessor struct {
 	// Tracer, do performance tracking
 	Tracer tracer.Tracer
 	// Admit do admit, return error if should stop
-	Admit func(ctx context.Context, in *appsv1.StatefulSet) errors.APIStatus
+	Admit func(ctx context.Context, in *appsv1.StatefulSet) *errors.StatusError
+	// Recover do recover if func Admit panic, return error if should stop
+	Recover func(ctx context.Context, pr interface{}) *errors.StatusError
 }
 
 type StatefulSetHandler struct {
@@ -1583,9 +1711,21 @@ func (p *StatefulSetProcessor) Validate() error {
 	return nil
 }
 
-func (p *StatefulSetProcessor) DoWithTracing(ctx context.Context, in *appsv1.StatefulSet) (cost time.Duration, ke errors.APIStatus) {
-	return p.Tracer.DoWithTracing(func() errors.APIStatus {
-		return p.Admit(ctx, in)
+func (p *StatefulSetProcessor) DoWithTracing(ctx context.Context, in *appsv1.StatefulSet) (cost time.Duration, ke *errors.StatusError) {
+	return p.Tracer.DoWithTracing(func() (re *errors.StatusError) {
+		defer func() {
+			pr := recover()
+			if pr == nil {
+				return
+			}
+			if p.Recover != nil {
+				re = p.Recover(ctx, pr)
+			} else {
+				re = errors.NewInternalServerError(fmt.Errorf("%v", p))
+			}
+		}()
+		re = p.Admit(ctx, in)
+		return
 	})
 }
 
@@ -1625,8 +1765,8 @@ func (h *StatefulSetHandler) Register(in interface{}) error {
 	return nil
 }
 
-func (h *StatefulSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke errors.APIStatus) {
-	return tracer.DoWithTracing(func() (ke errors.APIStatus) {
+func (h *StatefulSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke *errors.StatusError) {
+	return tracer.DoWithTracing(func() (ke *errors.StatusError) {
 		// log prepare
 		logBase := util.GetContextLogBase(ctx)
 		// check
@@ -1676,7 +1816,7 @@ func (h *StatefulSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer,
 				}
 			}
 			if ke != nil {
-				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke)
+				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke.Error())
 				break
 			}
 			log.Infof("%s[cost:%v] done", logPrefix, cost)
@@ -1722,7 +1862,9 @@ type WorkloadProcessor struct {
 	// Tracer, do performance tracking
 	Tracer tracer.Tracer
 	// Admit do admit, return error if should stop
-	Admit func(ctx context.Context, in *wklv1a1.Workload) errors.APIStatus
+	Admit func(ctx context.Context, in *wklv1a1.Workload) *errors.StatusError
+	// Recover do recover if func Admit panic, return error if should stop
+	Recover func(ctx context.Context, pr interface{}) *errors.StatusError
 }
 
 type WorkloadHandler struct {
@@ -1742,9 +1884,21 @@ func (p *WorkloadProcessor) Validate() error {
 	return nil
 }
 
-func (p *WorkloadProcessor) DoWithTracing(ctx context.Context, in *wklv1a1.Workload) (cost time.Duration, ke errors.APIStatus) {
-	return p.Tracer.DoWithTracing(func() errors.APIStatus {
-		return p.Admit(ctx, in)
+func (p *WorkloadProcessor) DoWithTracing(ctx context.Context, in *wklv1a1.Workload) (cost time.Duration, ke *errors.StatusError) {
+	return p.Tracer.DoWithTracing(func() (re *errors.StatusError) {
+		defer func() {
+			pr := recover()
+			if pr == nil {
+				return
+			}
+			if p.Recover != nil {
+				re = p.Recover(ctx, pr)
+			} else {
+				re = errors.NewInternalServerError(fmt.Errorf("%v", p))
+			}
+		}()
+		re = p.Admit(ctx, in)
+		return
 	})
 }
 
@@ -1784,8 +1938,8 @@ func (h *WorkloadHandler) Register(in interface{}) error {
 	return nil
 }
 
-func (h *WorkloadHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke errors.APIStatus) {
-	return tracer.DoWithTracing(func() (ke errors.APIStatus) {
+func (h *WorkloadHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke *errors.StatusError) {
+	return tracer.DoWithTracing(func() (ke *errors.StatusError) {
 		// log prepare
 		logBase := util.GetContextLogBase(ctx)
 		// check
@@ -1835,7 +1989,7 @@ func (h *WorkloadHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in
 				}
 			}
 			if ke != nil {
-				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke)
+				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke.Error())
 				break
 			}
 			log.Infof("%s[cost:%v] done", logPrefix, cost)

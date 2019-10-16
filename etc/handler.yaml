@@ -35,6 +35,8 @@ configs:
       timeoutsecond: 3
       processors:
       - module: demo
+        name: ConfigMapPanicPass
+      - module: demo
         name: ConfigMapDeletionAllow
 - group: apps
   version: v1

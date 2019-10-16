@@ -22,8 +22,9 @@ const (
 )
 
 type APIStatus = errors.APIStatus
+type StatusError = errors.StatusError
 
-func NewKubeErr(code int32, reason string, err error) *errors.StatusError {
+func NewKubeErr(code int32, reason string, err error) *StatusError {
 	return &errors.StatusError{
 		ErrStatus: metav1.Status{
 			Code:    code,
@@ -35,16 +36,16 @@ func NewKubeErr(code int32, reason string, err error) *errors.StatusError {
 }
 
 // NewInternalServerError diff with kube impl by use internal error reason
-func NewInternalServerError(err error) *errors.StatusError {
+func NewInternalServerError(err error) *StatusError {
 	return NewKubeErr(http.StatusInternalServerError, ReasonServerInternal, err)
 }
 
 // NewBadRequest diff with kube impl by use internal error reason
-func NewBadRequest(err error) *errors.StatusError {
+func NewBadRequest(err error) *StatusError {
 	return NewKubeErr(http.StatusBadRequest, ReasonBadRequest, err)
 }
 
 // NewRequestTimeout diff with kube impl by use internal error reason
-func NewRequestTimeout(err error) *errors.StatusError {
+func NewRequestTimeout(err error) *StatusError {
 	return NewKubeErr(http.StatusRequestTimeout, ReasonRequestTimeout, err)
 }

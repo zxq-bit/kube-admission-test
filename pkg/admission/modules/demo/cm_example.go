@@ -22,6 +22,7 @@ import (
 var (
 	cmProcessorExample       = makeCmExampleProcessor()
 	cmProcessorDeletionAllow = makeCmDeletionAllowProcessor()
+	cmProcessorPanicPass     = makeCmPanicPassProcessor()
 )
 
 func makeCmExampleProcessor() *gen.ConfigMapProcessor {
@@ -33,7 +34,7 @@ func makeCmExampleProcessor() *gen.ConfigMapProcessor {
 			Type:             constants.ProcessorTypeMutate,
 		},
 	}
-	p.Admit = func(ctx context.Context, in *corev1.ConfigMap) (ke errors.APIStatus) {
+	p.Admit = func(ctx context.Context, in *corev1.ConfigMap) (ke *errors.StatusError) {
 		logPrefix := fmt.Sprintf("%s[%s]", util.GetContextLogBase(ctx), p.LogPrefix())
 		old, err := gen.GetContextOldConfigMap(ctx)
 		if err != nil {
@@ -70,7 +71,7 @@ func makeCmDeletionAllowProcessor() *gen.ConfigMapProcessor {
 			Type:             constants.ProcessorTypeValidate,
 		},
 	}
-	p.Admit = func(ctx context.Context, in *corev1.ConfigMap) (ke errors.APIStatus) {
+	p.Admit = func(ctx context.Context, in *corev1.ConfigMap) (ke *errors.StatusError) {
 		logPrefix := fmt.Sprintf("%s[%s]", util.GetContextLogBase(ctx), p.LogPrefix())
 		if opType := util.GetContextOpType(ctx); opType != arv1b1.Delete {
 			log.Errorf("%s got unexpected op type: '%v'", logPrefix, opType)
@@ -97,6 +98,29 @@ func makeCmDeletionAllowProcessor() *gen.ConfigMapProcessor {
 			return errors.NewBadRequest(fmt.Errorf("deletion not allowed"))
 		}
 		log.Infof("%s allowed to del", logPrefix)
+		return nil
+	}
+	return p
+}
+
+func makeCmPanicPassProcessor() *gen.ConfigMapProcessor {
+	p := &gen.ConfigMapProcessor{
+		Metadata: processor.Metadata{
+			Name:             ProcessorNameCmPanicPass,
+			ModuleName:       ModuleName,
+			IgnoreNamespaces: []string{},
+			Type:             constants.ProcessorTypeValidate,
+		},
+	}
+	p.Admit = func(ctx context.Context, in *corev1.ConfigMap) (ke *errors.StatusError) {
+		logPrefix := fmt.Sprintf("%s[%s]", util.GetContextLogBase(ctx), p.LogPrefix())
+		log.Infof("%s start", logPrefix)
+		panic("we try panic")
+		return nil
+	}
+	p.Recover = func(ctx context.Context, pr interface{}) *errors.StatusError {
+		logPrefix := fmt.Sprintf("%s[%s]", util.GetContextLogBase(ctx), p.LogPrefix())
+		log.Warningf("%s receive panic: %v", logPrefix, pr)
 		return nil
 	}
 	return p

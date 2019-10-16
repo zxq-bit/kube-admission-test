@@ -4,7 +4,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/errors"
+	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 type Tracer struct {
@@ -13,20 +13,20 @@ type Tracer struct {
 	failed  ExecTracer
 }
 
-func (t *Tracer) Update(count uint64, cost time.Duration, err errors.APIStatus) {
+func (t *Tracer) Update(count uint64, cost time.Duration, ke *errors.StatusError) {
 	t.total.Update(count, cost)
-	if err == nil {
+	if ke == nil {
 		t.success.Update(count, cost)
 	} else {
 		t.failed.Update(count, cost)
 	}
 }
 
-func (t *Tracer) DoWithTracing(f func() errors.APIStatus) (cost time.Duration, err errors.APIStatus) {
+func (t *Tracer) DoWithTracing(f func() *errors.StatusError) (cost time.Duration, ke *errors.StatusError) {
 	now := time.Now()
-	err = f()
+	ke = f()
 	cost = time.Since(now)
-	go t.Update(1, cost, err)
+	go t.Update(1, cost, ke)
 	return
 }
 

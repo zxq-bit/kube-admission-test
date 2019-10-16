@@ -24,7 +24,7 @@ func IsOperationTypeLeague(opType arv1b1.OperationType) bool {
 	return false
 }
 
-func ToAdmissionFailedResponse(uid types.UID, kubeErr errors.APIStatus) *admissionv1b1.AdmissionResponse {
+func ToAdmissionFailedResponse(uid types.UID, kubeErr *errors.StatusError) *admissionv1b1.AdmissionResponse {
 	status := kubeErr.Status()
 	return &admissionv1b1.AdmissionResponse{
 		UID:     uid,

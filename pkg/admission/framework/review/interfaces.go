@@ -23,7 +23,7 @@ type RawExtensionParser func(raw *runtime.RawExtension) (runtime.Object, error)
 // inner interface to connect GVK processors with Handler
 type Reviewer interface {
 	Register(processor interface{}) error
-	DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err errors.APIStatus)
+	DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke *errors.StatusError)
 	IsEmpty() bool
 }
 

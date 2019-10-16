@@ -24,7 +24,7 @@ func (m *Module) getDpProcessorCheckMntRef() *gen.DeploymentProcessor {
 	}
 }
 
-func (m *Module) dpReviewMntRef(ctx context.Context, in *appsv1.Deployment) (ke errors.APIStatus) {
+func (m *Module) dpReviewMntRef(ctx context.Context, in *appsv1.Deployment) (ke *errors.StatusError) {
 	for _, v := range in.Spec.Template.Spec.Volumes {
 		if v.ConfigMap != nil {
 			cmName := v.ConfigMap.Name

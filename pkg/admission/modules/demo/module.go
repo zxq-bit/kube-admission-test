@@ -31,6 +31,7 @@ const (
 
 	ProcessorNameCmExample       = "ConfigMapExample"
 	ProcessorNameCmDeletionAllow = "ConfigMapDeletionAllow"
+	ProcessorNameCmPanicPass     = "ConfigMapPanicPass"
 	ProcessorNamePodExample      = "PodExample"
 	ProcessorNamePodGPUVisible   = "PodGPUVisible"
 	ProcessorNameDpCheckMntRef   = "DpCheckMntRef"
@@ -54,6 +55,7 @@ func NewModule(kc kubernetes.Interface, f informers.SharedInformerFactory) (modu
 	m.pMap = map[string]interface{}{
 		ProcessorNameCmExample:       cmProcessorExample,
 		ProcessorNameCmDeletionAllow: cmProcessorDeletionAllow,
+		ProcessorNameCmPanicPass:     cmProcessorPanicPass,
 		ProcessorNamePodExample:      podProcessorExample,
 		ProcessorNamePodGPUVisible:   podProcessorGPUVisible,
 		ProcessorNameDpCheckMntRef:   m.getDpProcessorCheckMntRef(),

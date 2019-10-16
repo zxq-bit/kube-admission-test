@@ -14,16 +14,19 @@ func New(tracer *Tracer) func(context.Context, definition.Chain) error {
 		return func(_ context.Context, _ definition.Chain) error { return nil }
 	}
 	return func(ctx context.Context, chain definition.Chain) error {
-		_, ke := tracer.DoWithTracing(func() errors.APIStatus {
+		_, ke := tracer.DoWithTracing(func() *errors.StatusError {
 			e := chain.Continue(ctx)
 			if e == nil {
 				return nil
 			}
-			if ke := e.(errors.APIStatus); ke != nil {
+			if ke := e.(*errors.StatusError); ke != nil {
 				return ke
 			}
 			return errors.NewInternalError(e)
 		})
-		return fmt.Errorf("%v", ke)
+		if ke != nil {
+			return fmt.Errorf("%s", ke.Error())
+		}
+		return nil
 	}
 }

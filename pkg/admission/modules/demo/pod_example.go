@@ -19,7 +19,7 @@ var (
 			IgnoreNamespaces: []string{},
 			Type:             constants.ProcessorTypeMutate,
 		},
-		Admit: func(ctx context.Context, in *corev1.Pod) (ke errors.APIStatus) {
+		Admit: func(ctx context.Context, in *corev1.Pod) (ke *errors.StatusError) {
 			if in.Annotations == nil {
 				in.Annotations = map[string]string{}
 			}

@@ -195,7 +195,7 @@ func (r *framework) ToNirvanaDescriptor() definition.Descriptor {
 					cost, ke := r.reviewer.DoAdmit(ctx, &r.tracer, obj)
 					if ke != nil {
 						ar.Response = util.ToAdmissionFailedResponse(ar.Request.UID, ke)
-						log.Errorf("%s[cost:%v] do review failed, %v", logPrefix, cost, e)
+						log.Errorf("%s[cost:%v] do review failed, %v", logPrefix, cost, ke.Error())
 						return ar
 					}
 					ar.Response = util.ToAdmissionPassResponse(ar.Request.UID, org, obj)

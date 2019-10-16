@@ -41,7 +41,7 @@ type StatefulSetProcessor struct {
 	// Tracer, do performance tracking
 	Tracer tracer.Tracer
 	// Admit do admit, return error if should stop
-	Admit func(ctx context.Context, in *appsv1.StatefulSet) (err error)
+	Admit func(ctx context.Context, in *appsv1.StatefulSet) errors.APIStatus
 }
 
 type StatefulSetHandler struct {
@@ -61,8 +61,8 @@ func (p *StatefulSetProcessor) Validate() error {
 	return nil
 }
 
-func (p *StatefulSetProcessor) DoWithTracing(ctx context.Context, in *appsv1.StatefulSet) (cost time.Duration, err error) {
-	return p.Tracer.DoWithTracing(func() error {
+func (p *StatefulSetProcessor) DoWithTracing(ctx context.Context, in *appsv1.StatefulSet) (cost time.Duration, ke errors.APIStatus) {
+	return p.Tracer.DoWithTracing(func() errors.APIStatus {
 		return p.Admit(ctx, in)
 	})
 }
@@ -103,8 +103,8 @@ func (h *StatefulSetHandler) Register(in interface{}) error {
 	return nil
 }
 
-func (h *StatefulSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
-	return tracer.DoWithTracing(func() (err error) {
+func (h *StatefulSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke errors.APIStatus) {
+	return tracer.DoWithTracing(func() (ke errors.APIStatus) {
 		// log prepare
 		logBase := util.GetContextLogBase(ctx)
 		// check
@@ -116,6 +116,7 @@ func (h *StatefulSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer,
 		}()
 		toFilter := obj
 		if toFilter == nil {
+			var err error
 			toFilter, err = GetContextOldStatefulSet(ctx)
 			if err != nil {
 				err = errors.ErrWrongRuntimeObjects
@@ -137,7 +138,7 @@ func (h *StatefulSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer,
 			cost := time.Duration(0)
 			select {
 			case <-ctx.Done():
-				err = errors.ErrContextEnded
+				ke = errors.NewRequestTimeout(errors.ErrContextEnded)
 			default:
 				switch p.Type {
 				case constants.ProcessorTypeValidate: // do without changes
@@ -145,15 +146,15 @@ func (h *StatefulSetHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer,
 					if obj != nil {
 						toValidate = obj.DeepCopy()
 					}
-					cost, err = p.DoWithTracing(ctx, toValidate)
+					cost, ke = p.DoWithTracing(ctx, toValidate)
 				case constants.ProcessorTypeMutate:
-					cost, err = p.DoWithTracing(ctx, obj)
+					cost, ke = p.DoWithTracing(ctx, obj)
 				default:
 					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
 				}
 			}
-			if err != nil {
-				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, err)
+			if ke != nil {
+				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke)
 				break
 			}
 			log.Infof("%s[cost:%v] done", logPrefix, cost)

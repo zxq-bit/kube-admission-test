@@ -3,6 +3,8 @@ package tracer
 import (
 	"sync/atomic"
 	"time"
+
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/errors"
 )
 
 type Tracer struct {
@@ -11,7 +13,7 @@ type Tracer struct {
 	failed  ExecTracer
 }
 
-func (t *Tracer) Update(count uint64, cost time.Duration, err error) {
+func (t *Tracer) Update(count uint64, cost time.Duration, err errors.APIStatus) {
 	t.total.Update(count, cost)
 	if err == nil {
 		t.success.Update(count, cost)
@@ -20,7 +22,7 @@ func (t *Tracer) Update(count uint64, cost time.Duration, err error) {
 	}
 }
 
-func (t *Tracer) DoWithTracing(f func() error) (cost time.Duration, err error) {
+func (t *Tracer) DoWithTracing(f func() errors.APIStatus) (cost time.Duration, err errors.APIStatus) {
 	now := time.Now()
 	err = f()
 	cost = time.Since(now)

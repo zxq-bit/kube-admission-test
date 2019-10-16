@@ -17,8 +17,11 @@ const (
 
 	ReasonServerInternal = reasonGroupBase + "InternalServerError"
 	ReasonBadRequest     = reasonGroupBase + "BadRequest"
+	ReasonRequestTimeout = reasonGroupBase + "RequestTimeout"
 	ReasonDemo           = ReasonGroupDemo + "ErrorReasonDemo"
 )
+
+type APIStatus = errors.APIStatus
 
 func NewKubeErr(code int32, reason string, err error) *errors.StatusError {
 	return &errors.StatusError{
@@ -31,10 +34,17 @@ func NewKubeErr(code int32, reason string, err error) *errors.StatusError {
 	}
 }
 
+// NewInternalServerError diff with kube impl by use internal error reason
 func NewInternalServerError(err error) *errors.StatusError {
 	return NewKubeErr(http.StatusInternalServerError, ReasonServerInternal, err)
 }
 
+// NewBadRequest diff with kube impl by use internal error reason
 func NewBadRequest(err error) *errors.StatusError {
 	return NewKubeErr(http.StatusBadRequest, ReasonBadRequest, err)
+}
+
+// NewRequestTimeout diff with kube impl by use internal error reason
+func NewRequestTimeout(err error) *errors.StatusError {
+	return NewKubeErr(http.StatusRequestTimeout, ReasonRequestTimeout, err)
 }

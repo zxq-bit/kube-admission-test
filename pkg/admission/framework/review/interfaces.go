@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/errors"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util/middlewares/tracer"
 
@@ -22,7 +23,7 @@ type RawExtensionParser func(raw *runtime.RawExtension) (runtime.Object, error)
 // inner interface to connect GVK processors with Handler
 type Reviewer interface {
 	Register(processor interface{}) error
-	DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error)
+	DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err errors.APIStatus)
 	IsEmpty() bool
 }
 

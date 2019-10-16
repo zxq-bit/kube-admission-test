@@ -6,7 +6,7 @@ import (
 
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/errors"
-	rcorev1 "github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review/apis/core/v1"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review/gen"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review/processor"
 
 	corev1 "k8s.io/api/core/v1"
@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	podProcessorGPUVisible = &rcorev1.PodProcessor{
+	podProcessorGPUVisible = &gen.PodProcessor{
 		Metadata: processor.Metadata{
 			Name:       ProcessorNamePodGPUVisible,
 			ModuleName: ModuleName,

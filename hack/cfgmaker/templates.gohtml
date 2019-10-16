@@ -1,4 +1,4 @@
-package v1
+package gen
 
 import (
 	"context"
@@ -16,24 +16,63 @@ import (
 
 	"github.com/caicloud/go-common/interfaces"
 	"github.com/caicloud/nirvana/log"
+{{- range $val := . }}
+    {{- if $val.IsCRD}}
+    {{.PkgName}} "{{.PkgPath}}"
+    {{- end }}
+{{- end }}
 
 	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
+{{- range $val := . }}
+	{{- if not $val.IsCRD}}
 	{{.PkgName}} "{{.PkgPath}}"
+    {{- end }}
+{{- end }}
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+func init() {
+{{- range $val := . }}
+	review.RegisterHandlerMaker({{.ResourceName}}GVR, New{{.KindName}}Handler)
+{{- end }}
+}
+
 var (
+{{- range $val := . }}
 	{{.ResourceName}}GVR = {{.PkgName}}.SchemeGroupVersion.WithResource("{{.ResourceName}}")
 	{{.ResourceName}}GVK = {{.PkgName}}.SchemeGroupVersion.WithKind("{{.KindName}}")
+{{- end }}
+
+	gvr2gvkMap = map[schema.GroupVersionResource]schema.GroupVersionKind{
+{{- range $val := . }}
+		{{.ResourceName}}GVR: {{.ResourceName}}GVK,
+{{- end }}
+	}
+	gvk2gvrMap = map[schema.GroupVersionKind]schema.GroupVersionResource{
+{{- range $val := . }}
+		{{.ResourceName}}GVK: {{.ResourceName}}GVR,
+{{- end }}
+	}
 )
 
-func Get{{.KindName}}GVR() schema.GroupVersionResource { return {{.ResourceName}}GVR }
-func Get{{.KindName}}GVK() schema.GroupVersionKind     { return {{.ResourceName}}GVK }
+{{- range $val := . }}
+func {{.KindName}}GVR() schema.GroupVersionResource { return {{.ResourceName}}GVR }
+func {{.KindName}}GVK() schema.GroupVersionKind     { return {{.ResourceName}}GVK }
+{{- end }}
 
-func init() {
-	review.RegisterHandlerMaker({{.ResourceName}}GVR, New{{.KindName}}Handler)
+func GetGVKByGVR(in schema.GroupVersionResource) (out schema.GroupVersionKind, ok bool) {
+	out, ok = gvr2gvkMap[in]
+	return
 }
+
+func GetGVRByGVK(in schema.GroupVersionKind) (out schema.GroupVersionResource, ok bool) {
+	out, ok = gvk2gvrMap[in]
+	return
+}
+
+{{- range $val := . }}
+// {{.ResourceName}} about
 
 type {{.KindName}}Processor struct {
 	// Metadata, set name, type and ignore settings
@@ -49,7 +88,7 @@ type {{.KindName}}Handler struct {
 	objFilters []util.ObjectIgnoreFilter
 }
 
-// processor
+// {{.ResourceName}} processor
 
 func (p *{{.KindName}}Processor) Validate() error {
 	if e := p.Metadata.Validate(); e != nil {
@@ -67,7 +106,7 @@ func (p *{{.KindName}}Processor) DoWithTracing(ctx context.Context, in *{{.PkgNa
 	})
 }
 
-// handler
+// {{.ResourceName}} handler
 
 func New{{.KindName}}Handler(opType arv1b1.OperationType) (review.Handler, error) {
 	return handler.NewFramework(
@@ -191,3 +230,5 @@ func GetContextOld{{.KindName}}(ctx context.Context) (*{{.PkgName}}.{{.KindName}
 	}
 	return {{.ResourceName}}RawExtensionParser(raw)
 }
+
+{{- end }}

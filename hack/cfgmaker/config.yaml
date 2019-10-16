@@ -58,3 +58,10 @@
   pkgname: appsv1
   resourcename: statefulsets
   kindname: StatefulSet
+- apigroup: workload.caicloud.io
+  apiversion: v1alpha1
+  pkgpath: github.com/caicloud/clientset/pkg/apis/workload/v1alpha1
+  pkgname: wklv1a1
+  resourcename: workloads
+  kindname: Workload
+  iscrd: true

@@ -6,14 +6,14 @@ import (
 
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/errors"
-	rappsv1 "github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review/apis/apps/v1"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review/gen"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review/processor"
 
 	appsv1 "k8s.io/api/apps/v1"
 )
 
-func (m *Module) getDpProcessorCheckMntRef() *rappsv1.DeploymentProcessor {
-	return &rappsv1.DeploymentProcessor{
+func (m *Module) getDpProcessorCheckMntRef() *gen.DeploymentProcessor {
+	return &gen.DeploymentProcessor{
 		Metadata: processor.Metadata{
 			Name:             ProcessorNameDpCheckMntRef,
 			ModuleName:       ModuleName,

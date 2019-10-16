@@ -8,7 +8,7 @@ import (
 
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/errors"
-	rcorev1 "github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review/apis/core/v1"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review/gen"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review/processor"
 	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
 
@@ -24,8 +24,8 @@ var (
 	cmProcessorDeletionAllow = makeCmDeletionAllowProcessor()
 )
 
-func makeCmExampleProcessor() *rcorev1.ConfigMapProcessor {
-	p := &rcorev1.ConfigMapProcessor{
+func makeCmExampleProcessor() *gen.ConfigMapProcessor {
+	p := &gen.ConfigMapProcessor{
 		Metadata: processor.Metadata{
 			Name:             ProcessorNameCmExample,
 			ModuleName:       ModuleName,
@@ -35,7 +35,7 @@ func makeCmExampleProcessor() *rcorev1.ConfigMapProcessor {
 	}
 	p.Admit = func(ctx context.Context, in *corev1.ConfigMap) (ke errors.APIStatus) {
 		logPrefix := fmt.Sprintf("%s[%s]", util.GetContextLogBase(ctx), p.LogPrefix())
-		old, err := rcorev1.GetContextOldConfigMap(ctx)
+		old, err := gen.GetContextOldConfigMap(ctx)
 		if err != nil {
 			log.Errorf("%s GetContextOldConfigMap failed, %v", logPrefix, err)
 			return errors.NewBadRequest(err)
@@ -61,8 +61,8 @@ func makeCmExampleProcessor() *rcorev1.ConfigMapProcessor {
 	return p
 }
 
-func makeCmDeletionAllowProcessor() *rcorev1.ConfigMapProcessor {
-	p := &rcorev1.ConfigMapProcessor{
+func makeCmDeletionAllowProcessor() *gen.ConfigMapProcessor {
+	p := &gen.ConfigMapProcessor{
 		Metadata: processor.Metadata{
 			Name:             ProcessorNameCmDeletionAllow,
 			ModuleName:       ModuleName,
@@ -76,7 +76,7 @@ func makeCmDeletionAllowProcessor() *rcorev1.ConfigMapProcessor {
 			log.Errorf("%s got unexpected op type: '%v'", logPrefix, opType)
 			return errors.NewBadRequest(fmt.Errorf("unexpected op type '%v'", opType))
 		}
-		old, err := rcorev1.GetContextOldConfigMap(ctx)
+		old, err := gen.GetContextOldConfigMap(ctx)
 		if err != nil {
 			log.Errorf("%s GetContextOldConfigMap failed, %v", logPrefix, err)
 			return errors.NewInternalServerError(err)

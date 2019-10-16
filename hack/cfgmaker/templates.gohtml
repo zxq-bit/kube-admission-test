@@ -1,0 +1,268 @@
+package gen
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/constants"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/errors"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review/handler"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/review/processor"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util"
+	"github.com/zxq-bit/kube-admission-test/pkg/admission/framework/util/middlewares/tracer"
+
+	"github.com/caicloud/go-common/interfaces"
+	"github.com/caicloud/nirvana/log"
+{{- range $val := . }}
+    {{- if $val.IsCRD}}
+    {{.PkgName}} "{{.PkgPath}}"
+    {{- end }}
+{{- end }}
+
+	arv1b1 "k8s.io/api/admissionregistration/v1beta1"
+{{- range $val := . }}
+	{{- if not $val.IsCRD}}
+	{{.PkgName}} "{{.PkgPath}}"
+    {{- end }}
+{{- end }}
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+)
+
+func init() {
+{{- range $val := . }}
+	review.RegisterHandlerMaker({{.ResourceName}}GVR, New{{.KindName}}Handler)
+{{- end }}
+}
+
+var (
+{{- range $val := . }}
+	{{.ResourceName}}GVR = {{.PkgName}}.SchemeGroupVersion.WithResource("{{.ResourceName}}")
+	{{.ResourceName}}GVK = {{.PkgName}}.SchemeGroupVersion.WithKind("{{.KindName}}")
+{{- end }}
+
+	gvr2gvkMap = map[schema.GroupVersionResource]schema.GroupVersionKind{
+{{- range $val := . }}
+		{{.ResourceName}}GVR: {{.ResourceName}}GVK,
+{{- end }}
+	}
+	gvk2gvrMap = map[schema.GroupVersionKind]schema.GroupVersionResource{
+{{- range $val := . }}
+		{{.ResourceName}}GVK: {{.ResourceName}}GVR,
+{{- end }}
+	}
+)
+
+{{- range $val := . }}
+func {{.KindName}}GVR() schema.GroupVersionResource { return {{.ResourceName}}GVR }
+func {{.KindName}}GVK() schema.GroupVersionKind     { return {{.ResourceName}}GVK }
+{{- end }}
+
+func GetGVKByGVR(in schema.GroupVersionResource) (out schema.GroupVersionKind, ok bool) {
+	out, ok = gvr2gvkMap[in]
+	return
+}
+
+func GetGVRByGVK(in schema.GroupVersionKind) (out schema.GroupVersionResource, ok bool) {
+	out, ok = gvk2gvrMap[in]
+	return
+}
+
+{{- range $val := . }}
+// {{.ResourceName}} about
+
+type {{.KindName}}Processor struct {
+	// Metadata, set name, type and ignore settings
+	processor.Metadata
+	// Tracer, do performance tracking
+	Tracer tracer.Tracer
+	// Admit do admit, return error if should stop
+	Admit func(ctx context.Context, in *{{.PkgName}}.{{.KindName}}) *errors.StatusError
+	// Recover do recover if func Admit panic, return error if should stop
+	Recover func(ctx context.Context, pr interface{}) *errors.StatusError
+}
+
+type {{.KindName}}Handler struct {
+	processors []*{{.KindName}}Processor
+	objFilters []util.ObjectIgnoreFilter
+}
+
+// {{.ResourceName}} processor
+
+func (p *{{.KindName}}Processor) Validate() error {
+	if e := p.Metadata.Validate(); e != nil {
+		return e
+	}
+	if p.Admit == nil {
+		return fmt.Errorf("%v nil processor admit function", p.Key())
+	}
+	return nil
+}
+
+func (p *{{.KindName}}Processor) DoWithTracing(ctx context.Context, in *{{.PkgName}}.{{.KindName}}) (cost time.Duration, ke *errors.StatusError) {
+	return p.Tracer.DoWithTracing(func() (re *errors.StatusError) {
+		defer func() {
+			pr := recover()
+			if pr == nil {
+				return
+			}
+			if p.Recover != nil {
+				re = p.Recover(ctx, pr)
+			} else {
+				re = errors.NewInternalServerError(fmt.Errorf("%v", p))
+			}
+		}()
+		re = p.Admit(ctx, in)
+		return
+	})
+}
+
+// {{.ResourceName}} handler
+
+func New{{.KindName}}Handler(opType arv1b1.OperationType) (review.Handler, error) {
+	return handler.NewFramework(
+		{{.ResourceName}}GVR,
+		opType,
+		func(raw *runtime.RawExtension) (runtime.Object, error) {
+			return {{.ResourceName}}RawExtensionParser(raw)
+		},
+		&{{.KindName}}Handler{},
+	)
+}
+
+func (h *{{.KindName}}Handler) IsEmpty() bool {
+	return len(h.processors) == 0
+}
+
+func (h *{{.KindName}}Handler) Register(in interface{}) error {
+	getProcessor := func(v interface{}) *{{.KindName}}Processor {
+		if v == nil {
+			return nil
+		}
+		return v.(*{{.KindName}}Processor)
+	}
+	p := getProcessor(in)
+	if p == nil {
+		return errors.ErrProcessorIsNil
+	}
+	if e := p.Validate(); e != nil {
+		return e
+	}
+	h.processors = append(h.processors, p)
+	h.objFilters = append(h.objFilters, p.GetObjectFilter())
+	return nil
+}
+
+func (h *{{.KindName}}Handler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, ke *errors.StatusError) {
+	return tracer.DoWithTracing(func() (ke *errors.StatusError) {
+		// log prepare
+		logBase := util.GetContextLogBase(ctx)
+		// check
+		obj := func() *{{.PkgName}}.{{.KindName}} {
+			if interfaces.IsNil(in) {
+				return nil
+			}
+			return in.(*{{.PkgName}}.{{.KindName}})
+		}()
+		toFilter := obj
+		if toFilter == nil {
+			var err error
+			toFilter, err = GetContextOld{{.KindName}}(ctx)
+			if err != nil {
+				err = errors.ErrWrongRuntimeObjects
+				log.Errorf("%s DoAdmit failed, %v", logBase, err)
+				return errors.NewBadRequest(err)
+			}
+		}
+		// cleanup
+		defer util.RemoveObjectAnno(obj, constants.AnnoKeyAdmissionIgnore)
+		// execute processors
+		for i, p := range h.processors {
+			logPrefix := logBase + fmt.Sprintf("[%d][%s]", i, p.LogPrefix())
+			// check ignore
+			if ignoreReason := h.objFilters[i](toFilter); ignoreReason != nil {
+				log.Infof("%s skip for %s", logPrefix, *ignoreReason)
+				continue
+			}
+			// do review
+			cost := time.Duration(0)
+			select {
+			case <-ctx.Done():
+				ke = errors.NewRequestTimeout(errors.ErrContextEnded)
+			default:
+				switch p.Type {
+				case constants.ProcessorTypeValidate: // do without changes
+					var toValidate *{{.PkgName}}.{{.KindName}}
+					if obj != nil {
+						toValidate = obj.DeepCopy()
+					}
+					cost, ke = p.DoWithTracing(ctx, toValidate)
+				case constants.ProcessorTypeMutate:
+					var backup *{{.PkgName}}.{{.KindName}}
+					if obj != nil {
+						backup = obj.DeepCopy()
+					}
+					cost, ke = p.DoWithTracing(SetContext{{.KindName}}Backup(ctx, backup), obj)
+				default:
+					log.Errorf("%s skip for unknown processor type '%v'", p.Type)
+				}
+			}
+			if ke != nil {
+				log.Errorf("%s[cost:%v] stop by error: %v", logPrefix, cost, ke.Error())
+				break
+			}
+			log.Infof("%s[cost:%v] done", logPrefix, cost)
+		}
+		return
+	})
+}
+
+func {{.ResourceName}}RawExtensionParser(raw *runtime.RawExtension) (*{{.PkgName}}.{{.KindName}}, error) {
+	if raw == nil {
+		return nil, fmt.Errorf("runtime.RawExtension is nil")
+	}
+	if !interfaces.IsNil(raw.Object) {
+		if gvk := raw.Object.GetObjectKind().GroupVersionKind(); gvk != {{.ResourceName}}GVK {
+			return nil, fmt.Errorf("runtime.RawExtension group version kind '%v' != '%v'", gvk.String(), {{.ResourceName}}GVK.String())
+		}
+		if obj := raw.Object.(*{{.PkgName}}.{{.KindName}}); obj != nil {
+			return obj.DeepCopy(), nil
+		}
+	}
+	parsed := &{{.PkgName}}.{{.KindName}}{}
+	if e := json.Unmarshal(raw.Raw, parsed); e != nil {
+		return nil, e
+	}
+	return parsed, nil
+}
+
+// GetContextOld{{.KindName}} get {{.KindName}} old object from Context
+// no error if old object not exist, error if parse failed
+func GetContextOld{{.KindName}}(ctx context.Context) (*{{.PkgName}}.{{.KindName}}, error) {
+	raw := util.GetContextOldObject(ctx)
+	if raw == nil { // no old object
+		return nil, nil
+	}
+	return {{.ResourceName}}RawExtensionParser(raw)
+}
+
+// SetContext{{.KindName}}Backup set {{.KindName}} backup object to Context
+func SetContext{{.KindName}}Backup(ctx context.Context, backup *{{.PkgName}}.{{.KindName}}) context.Context {
+	return context.WithValue(ctx, constants.ContextKeyObjectBackup, backup)
+}
+
+// GetContext{{.KindName}}Backup get {{.KindName}} backup object from Context
+func GetContext{{.KindName}}Backup(ctx context.Context) *{{.PkgName}}.{{.KindName}} {
+	if interfaces.IsNil(ctx) {
+		return nil
+	}
+	if raw := ctx.Value(constants.ContextKeyObjectBackup); raw != nil {
+		return raw.(*{{.PkgName}}.{{.KindName}})
+	}
+	return nil
+}
+
+{{- end }}

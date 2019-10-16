@@ -1,5 +1,23 @@
-# Output folder of build
-bin
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
 
-# Output file of unit test coverage
-coverage.out
+# Test binary, build with `go test -c`
+*.test
+/hack/local-test/setting.sh
+/hack/cluster-test/*
+test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
+.glide/
+node_modules
+/bin
+
+# GoLang IDE
+.idea
+.vscode

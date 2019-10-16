@@ -33,7 +33,7 @@ func makeCmExampleProcessor() *rcorev1.ConfigMapProcessor {
 			Type:             constants.ProcessorTypeMutate,
 		},
 	}
-	p.Review = func(ctx context.Context, in *corev1.ConfigMap) (err error) {
+	p.Admit = func(ctx context.Context, in *corev1.ConfigMap) (err error) {
 		logPrefix := fmt.Sprintf("%s[%s]", util.GetContextLogBase(ctx), p.LogPrefix())
 		old, err := rcorev1.GetContextOldConfigMap(ctx)
 		if err != nil {
@@ -70,7 +70,7 @@ func makeCmDeletionAllowProcessor() *rcorev1.ConfigMapProcessor {
 			Type:             constants.ProcessorTypeValidate,
 		},
 	}
-	p.Review = func(ctx context.Context, in *corev1.ConfigMap) (err error) {
+	p.Admit = func(ctx context.Context, in *corev1.ConfigMap) (err error) {
 		logPrefix := fmt.Sprintf("%s[%s]", util.GetContextLogBase(ctx), p.LogPrefix())
 		if opType := util.GetContextOpType(ctx); opType != arv1b1.Delete {
 			log.Errorf("%s got unexpected op type: '%v'", logPrefix, opType)

@@ -192,7 +192,7 @@ func (r *framework) ToNirvanaDescriptor() definition.Descriptor {
 					if org != nil {
 						obj = org.DeepCopyObject()
 					}
-					cost, e := r.reviewer.DoReview(ctx, &r.tracer, obj)
+					cost, e := r.reviewer.DoAdmit(ctx, &r.tracer, obj)
 					if e != nil {
 						ar.Response = util.ToAdmissionFailedResponse(ar.Request.UID, e)
 						log.Errorf("%s[cost:%v] do review failed, %v", logPrefix, cost, e)

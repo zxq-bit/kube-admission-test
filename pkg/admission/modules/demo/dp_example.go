@@ -19,7 +19,7 @@ func (m *Module) getDpProcessorCheckMntRef() *rappsv1.DeploymentProcessor {
 			IgnoreNamespaces: []string{},
 			Type:             constants.ProcessorTypeValidate,
 		},
-		Review: m.dpReviewMntRef,
+		Admit: m.dpReviewMntRef,
 	}
 }
 

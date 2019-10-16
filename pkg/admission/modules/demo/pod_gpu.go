@@ -30,7 +30,7 @@ var (
 			},
 			Type: constants.ProcessorTypeMutate,
 		},
-		Review: func(ctx context.Context, in *corev1.Pod) (err error) {
+		Admit: func(ctx context.Context, in *corev1.Pod) (err error) {
 			mutatePodForGPUEnv(in)
 			return
 		},

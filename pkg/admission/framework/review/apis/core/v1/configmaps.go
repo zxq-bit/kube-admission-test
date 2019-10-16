@@ -40,8 +40,8 @@ type ConfigMapProcessor struct {
 	processor.Metadata
 	// Tracer, do performance tracking
 	Tracer tracer.Tracer
-	// Review do review, return error if should stop
-	Review func(ctx context.Context, in *corev1.ConfigMap) (err error)
+	// Admit do admit, return error if should stop
+	Admit func(ctx context.Context, in *corev1.ConfigMap) (err error)
 }
 
 type ConfigMapHandler struct {
@@ -55,19 +55,19 @@ func (p *ConfigMapProcessor) Validate() error {
 	if e := p.Metadata.Validate(); e != nil {
 		return e
 	}
-	if p.Review == nil {
-		return fmt.Errorf("%v nil processor review function", p.Key())
+	if p.Admit == nil {
+		return fmt.Errorf("%v nil processor admit function", p.Key())
 	}
 	return nil
 }
 
 func (p *ConfigMapProcessor) DoWithTracing(ctx context.Context, in *corev1.ConfigMap) (cost time.Duration, err error) {
 	return p.Tracer.DoWithTracing(func() error {
-		return p.Review(ctx, in)
+		return p.Admit(ctx, in)
 	})
 }
 
-// reviewer
+// handler
 
 func NewConfigMapHandler(opType arv1b1.OperationType) (review.Handler, error) {
 	return handler.NewFramework(
@@ -103,7 +103,7 @@ func (h *ConfigMapHandler) Register(in interface{}) error {
 	return nil
 }
 
-func (h *ConfigMapHandler) DoReview(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
+func (h *ConfigMapHandler) DoAdmit(ctx context.Context, tracer *tracer.Tracer, in runtime.Object) (cost time.Duration, err error) {
 	return tracer.DoWithTracing(func() (err error) {
 		// log prepare
 		logBase := util.GetContextLogBase(ctx)
@@ -119,7 +119,7 @@ func (h *ConfigMapHandler) DoReview(ctx context.Context, tracer *tracer.Tracer, 
 			toFilter, err = GetContextOldConfigMap(ctx)
 			if err != nil {
 				err = errors.ErrWrongRuntimeObjects
-				log.Errorf("%s DoReview failed, %v", logBase, err)
+				log.Errorf("%s DoAdmit failed, %v", logBase, err)
 				return errors.NewBadRequest(err)
 			}
 		}
